@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KURS — Iniciar sesión</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
+</head>
+<body>
+
+  <div class="stars-layer" aria-hidden="true"></div>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ══════════════ LOGIN CARD ══════════════ -->
+  <div class="login-wrap">
+    <div class="login-card glass-bubble">
+
+      <!-- Logo -->
+      <div class="login-logo">
+        <a href="/"><img src="/images/LogoSolo.svg" alt="KURS" /></a>
+      </div>
+
+      <p class="login-eyebrow">Portal de acceso</p>
+      <h1 class="login-title">Iniciar <span class="gradient-text">sesión</span></h1>
+      <p class="login-sub">Bienvenido de vuelta. Ingresa tus credenciales para continuar.</p>
+
+      <div class="login-fields">
+
+        <div class="login-group">
+          <label>Correo electrónico</label>
+          <div class="login-input-wrap">
+            <i class="ti ti-mail"></i>
+            <input type="email" id="email" placeholder="tu@correo.com" />
+          </div>
+        </div>
+
+        <div class="login-group">
+          <label>Contraseña</label>
+          <div class="login-input-wrap">
+            <i class="ti ti-lock"></i>
+            <input type="password" id="password" placeholder="••••••••" />
+            <button type="button" class="toggle-pw" aria-label="Mostrar contraseña">
+              <i class="ti ti-eye"></i>
+            </button>
+          </div>
+        </div>
+
+        <a href="#" class="login-forgot">¿Olvidaste tu contraseña?</a>
+
+        <p class="login-error" id="loginError" style="display:none"></p>
+
+        <button class="btn-login-submit glass-bubble-btn" id="loginBtn">
+          <i class="ti ti-arrow-right"></i>
+          <span>Entrar</span>
+        </button>
+
+      </div>
+
+      <div class="login-divider"><span>¿nuevo aquí?</span></div>
+
+      <p class="login-register">
+        ¿No tienes cuenta?
+        <a href="/registro">Regístrate gratis</a>
+      </p>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/images/LogoSinFondo.svg" alt="KURS" class="footer-logo-img" />
+      <p class="footer-slogan">Tecnología que marca tu rumbo.</p>
+    </div>
+    <div class="footer-contacts">
+      <a href="mailto:kurs.company.com@gmail.com" class="footer-link">
+        <i class="ti ti-mail"></i> kurs.company.com&#64;gmail.com
+      </a>
+      <a href="https://wa.me/51949238917" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-whatsapp"></i> +51 949 238 917
+      </a>
+      <a href="https://instagram.com/kurs.pe" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-instagram"></i> &#64;kurs.pe
+      </a>
+      <a href="https://tiktok.com/@kurs.pe" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-tiktok"></i> &#64;kurs.pe
+      </a>
+    </div>
+    <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados.</p>
+  </footer>
+
+  <script src="/js/kurs.js"></script>
+</body>
+</html>

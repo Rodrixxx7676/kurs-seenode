@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KURS — Contacto</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
+</head>
+<body>
+
+  <div class="stars-layer" aria-hidden="true"></div>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ══════════════ NAVBAR ══════════════ -->
+  <nav class="navbar glass-bubble">
+    <div class="nav-logo">
+      <a href="/">
+        <img src="/images/LogoSolo.svg" alt="KURS" class="logo-img" />
+      </a>
+    </div>
+    <ul class="nav-links">
+      <li><a href="/#servicios"><i class="ti ti-briefcase"></i> Servicios</a></li>
+      <li><a href="/#nosotros"><i class="ti ti-users"></i> Nosotros</a></li>
+      <li><a href="/contacto" class="active"><i class="ti ti-message-circle"></i> Contacto</a></li>
+      <li><a href="/proveedores"><i class="ti ti-truck-delivery"></i> Proveedores</a></li>
+    </ul>
+    <div class="nav-auth">
+      <a href="/login" class="btn-login"><i class="ti ti-user"></i> Iniciar sesión</a>
+      <a href="/registro" class="btn-register glass-bubble-btn"><i class="ti ti-user-plus"></i> Registrarse</a>
+    </div>
+  </nav>
+
+  <!-- ══════════════ HERO ══════════════ -->
+  <div class="contacto-hero">
+    <span class="section-tag glass-bubble" style="margin-bottom:20px;display:inline-block;">
+      <i class="ti ti-antenna"></i> Estamos aquí
+    </span>
+    <h1>Contáctanos <span class="gradient-text">hoy</span></h1>
+    <p>Escríbenos por WhatsApp, Instagram o correo.<br />Respondemos en menos de 24 horas.</p>
+  </div>
+
+  <!-- ══════════════ CANALES ══════════════ -->
+  <div class="contact-channels">
+
+    <a href="https://wa.me/51949238917" target="_blank" rel="noopener"
+       class="channel-card glass-bubble whatsapp">
+      <div class="channel-icon"><i class="ti ti-brand-whatsapp"></i></div>
+      <h3>WhatsApp</h3>
+      <span class="channel-handle">+51 949 238 917</span>
+      <p class="channel-desc">Chatea con nuestro equipo directamente. Respuesta rápida garantizada.</p>
+      <span class="channel-btn">Chatear ahora</span>
+    </a>
+
+    <a href="https://instagram.com/kurs.pe" target="_blank" rel="noopener"
+       class="channel-card glass-bubble instagram">
+      <div class="channel-icon"><i class="ti ti-brand-instagram"></i></div>
+      <h3>Instagram</h3>
+      <span class="channel-handle">&#64;kurs.pe</span>
+      <p class="channel-desc">Síguenos para ver nuestros proyectos, casos de éxito y novedades.</p>
+      <span class="channel-btn">Ver perfil</span>
+    </a>
+
+    <a href="mailto:kurs.company.com@gmail.com"
+       class="channel-card glass-bubble gmail">
+      <div class="channel-icon"><i class="ti ti-mail"></i></div>
+      <h3>Correo</h3>
+      <span class="channel-handle">kurs.company.com&#64;gmail.com</span>
+      <p class="channel-desc">Escríbenos por correo para consultas formales o propuestas de proyecto.</p>
+      <span class="channel-btn">Enviar correo</span>
+    </a>
+
+    <a href="https://tiktok.com/@kurs.pe" target="_blank" rel="noopener"
+       class="channel-card glass-bubble tiktok">
+      <div class="channel-icon"><i class="ti ti-brand-tiktok"></i></div>
+      <h3>TikTok</h3>
+      <span class="channel-handle">&#64;kurs.pe</span>
+      <p class="channel-desc">Mira nuestros videos, tips de tecnología y casos de éxito en formato corto.</p>
+      <span class="channel-btn">Ver perfil</span>
+    </a>
+
+  </div>
+
+  <!-- ══════════════ FORMULARIO ══════════════ -->
+  <div class="contact-form-section">
+    <h2>Envíanos un <span class="gradient-text">mensaje</span></h2>
+
+    <div class="form-success glass-bubble" id="contactoOk" style="display:none">
+      <i class="ti ti-circle-check"></i>
+      <h3>¡Mensaje enviado!</h3>
+      <p>Nos pondremos en contacto contigo muy pronto.</p>
+    </div>
+
+    <div class="contact-form glass-bubble" id="contactoForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nombre</label>
+          <div class="input-wrap">
+            <i class="ti ti-user"></i>
+            <input type="text" id="nombre" placeholder="Tu nombre completo" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <div class="input-wrap">
+            <i class="ti ti-mail"></i>
+            <input type="email" id="email" placeholder="tu@correo.com" />
+          </div>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Asunto</label>
+        <div class="input-wrap">
+          <i class="ti ti-tag"></i>
+          <input type="text" id="asunto" placeholder="¿En qué podemos ayudarte?" />
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Mensaje</label>
+        <div class="input-wrap">
+          <i class="ti ti-message" style="position:absolute;left:16px;top:14px;"></i>
+          <textarea id="mensaje" placeholder="Cuéntanos más sobre tu proyecto..."></textarea>
+        </div>
+      </div>
+
+      <p class="form-error" id="contactoError" style="display:none"></p>
+
+      <div class="form-submit">
+        <button class="btn-send glass-bubble-btn" id="contactoBtn">
+          <i class="ti ti-send"></i>
+          <span>Enviar mensaje</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/images/LogoSinFondo.svg" alt="KURS" class="footer-logo-img" />
+      <p class="footer-slogan">Tecnología que marca tu rumbo.</p>
+    </div>
+    <div class="footer-contacts">
+      <a href="mailto:kurs.company.com@gmail.com" class="footer-link">
+        <i class="ti ti-mail"></i> kurs.company.com&#64;gmail.com
+      </a>
+      <a href="https://wa.me/51949238917" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-whatsapp"></i> +51 949 238 917
+      </a>
+      <a href="https://instagram.com/kurs.pe" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-instagram"></i> &#64;kurs.pe
+      </a>
+      <a href="https://tiktok.com/@kurs.pe" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-tiktok"></i> &#64;kurs.pe
+      </a>
+    </div>
+    <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados.</p>
+  </footer>
+
+  <script src="/js/kurs.js"></script>
+</body>
+</html>

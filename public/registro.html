@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KURS — Crear cuenta</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/app.css" />
+  <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
+</head>
+<body>
+
+  <div class="stars-layer" aria-hidden="true"></div>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ══════════════ REGISTRO CARD ══════════════ -->
+  <div class="login-wrap">
+    <div class="login-card glass-bubble">
+
+      <!-- Logo → vuelve al inicio -->
+      <div class="login-logo">
+        <a href="/"><img src="/images/LogoSolo.svg" alt="KURS" /></a>
+      </div>
+
+      <p class="login-eyebrow">Comienza gratis hoy</p>
+      <h1 class="login-title">Crear <span class="gradient-text">cuenta</span></h1>
+      <p class="login-sub">Únete a KURS y marca tu rumbo hacia el futuro digital.</p>
+
+      <div class="login-fields">
+
+        <div class="login-group">
+          <label>Nombre completo</label>
+          <div class="login-input-wrap">
+            <i class="ti ti-user"></i>
+            <input type="text" id="nombre" placeholder="Tu nombre completo" />
+          </div>
+        </div>
+
+        <div class="login-group">
+          <label>Empresa <span style="opacity:.4;font-size:8px;letter-spacing:.1em;">(opcional)</span></label>
+          <div class="login-input-wrap">
+            <i class="ti ti-building"></i>
+            <input type="text" id="empresa" placeholder="Nombre de tu empresa" />
+          </div>
+        </div>
+
+        <div class="login-group">
+          <label>Correo electrónico</label>
+          <div class="login-input-wrap">
+            <i class="ti ti-mail"></i>
+            <input type="email" id="email" placeholder="tu@correo.com" />
+          </div>
+        </div>
+
+        <div class="login-group">
+          <label>Contraseña</label>
+          <div class="login-input-wrap">
+            <i class="ti ti-lock"></i>
+            <input type="password" id="password" placeholder="Mínimo 7 caracteres" />
+            <button type="button" class="toggle-pw" aria-label="Mostrar contraseña">
+              <i class="ti ti-eye"></i>
+            </button>
+          </div>
+
+          <div class="pw-rules" id="pwRules" style="display:none">
+            <span class="pw-rule fail" id="ruleLen">
+              <i class="ti ti-circle-x"></i>
+              Mínimo 7 caracteres
+            </span>
+            <span class="pw-rule fail" id="ruleMayus">
+              <i class="ti ti-circle-x"></i>
+              Una letra mayúscula
+            </span>
+            <span class="pw-rule fail" id="ruleNum">
+              <i class="ti ti-circle-x"></i>
+              Un número
+            </span>
+            <span class="pw-rule fail" id="ruleEsp">
+              <i class="ti ti-circle-x"></i>
+              Un carácter especial (!&#64;#$%...)
+            </span>
+          </div>
+        </div>
+
+        <div class="login-group">
+          <label>Confirmar contraseña</label>
+          <div class="login-input-wrap">
+            <i class="ti ti-lock-check"></i>
+            <input type="password" id="confirm" placeholder="Repite tu contraseña" />
+          </div>
+        </div>
+
+        <p class="login-error" id="registroError" style="display:none"></p>
+
+        <div class="registro-ok glass-bubble" id="registroOk" style="display:none">
+          <i class="ti ti-circle-check"></i>
+          <span>¡Cuenta creada! Redirigiendo...</span>
+        </div>
+
+        <button class="btn-login-submit glass-bubble-btn" id="registroBtn">
+          <i class="ti ti-user-plus"></i>
+          <span>Crear cuenta</span>
+        </button>
+
+      </div>
+
+      <div class="login-divider"><span>¿ya tienes cuenta?</span></div>
+
+      <p class="login-register">
+        ¿Ya tienes cuenta?
+        <a href="/login">Iniciar sesión</a>
+      </p>
+
+    </div>
+  </div>
+
+  <!-- ══════════════ FOOTER ══════════════ -->
+  <footer class="footer">
+    <div class="footer-brand">
+      <img src="/images/LogoSinFondo.svg" alt="KURS" class="footer-logo-img" />
+      <p class="footer-slogan">Tecnología que marca tu rumbo.</p>
+    </div>
+    <div class="footer-contacts">
+      <a href="mailto:kurs.company.com@gmail.com" class="footer-link">
+        <i class="ti ti-mail"></i> kurs.company.com&#64;gmail.com
+      </a>
+      <a href="https://wa.me/51949238917" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-whatsapp"></i> +51 949 238 917
+      </a>
+      <a href="https://instagram.com/kurs.pe" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-instagram"></i> &#64;kurs.pe
+      </a>
+      <a href="https://tiktok.com/@kurs.pe" target="_blank" rel="noopener" class="footer-link">
+        <i class="ti ti-brand-tiktok"></i> &#64;kurs.pe
+      </a>
+    </div>
+    <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados.</p>
+  </footer>
+
+  <script src="/js/kurs.js"></script>
+</body>
+</html>
