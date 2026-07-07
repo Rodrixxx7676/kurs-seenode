@@ -107,6 +107,12 @@ const app = express();
 app.set('trust proxy', 1);          // Seenode termina TLS en su proxy
 app.use(express.json());
 
+// ── Diagnóstico rápido: GET /api/salud ──────────────────────────────────────
+let dbLista = false;
+app.get('/api/salud', (_req, res) => {
+  res.json({ servidor: 'ok', baseDeDatos: dbLista ? 'conectada' : 'sin conexión' });
+});
+
 // ═════════════════════════ AUTH ═════════════════════════
 
 // POST /api/auth/registro
@@ -290,6 +296,20 @@ app.delete('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
 // extensions: ['html'] → /login sirve login.html, /contacto sirve contacto.html, etc.
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
-initSchema()
-  .then(() => app.listen(PORT, () => console.log(`KURS escuchando en puerto ${PORT}`)))
-  .catch(err => { console.error('No se pudo inicializar la base de datos:', err); process.exit(1); });
+// El servidor arranca aunque la BD no responda: así el sitio estático sigue
+// vivo y /api/salud permite diagnosticar. El esquema se reintenta cada 10 s.
+app.listen(PORT, () => console.log(`KURS escuchando en puerto ${PORT}`));
+
+(async function conectarBd() {
+  for (;;) {
+    try {
+      await initSchema();
+      dbLista = true;
+      console.log('Base de datos lista.');
+      return;
+    } catch (err) {
+      console.error('Base de datos no disponible, reintento en 10 s:', err.message);
+      await new Promise(r => setTimeout(r, 10_000));
+    }
+  }
+})();
