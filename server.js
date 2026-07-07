@@ -296,6 +296,11 @@ app.delete('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
 // extensions: ['html'] → /login sirve login.html, /contacto sirve contacto.html, etc.
 app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
 
+// Rutas inexistentes → misma página 404 que mostraba el router de Blazor
+app.use((_req, res) => {
+  res.status(404).sendFile(path.join(__dirname, 'public', '404.html'));
+});
+
 // El servidor arranca aunque la BD no responda: así el sitio estático sigue
 // vivo y /api/salud permite diagnosticar. El esquema se reintenta cada 10 s.
 app.listen(PORT, () => console.log(`KURS escuchando en puerto ${PORT}`));
