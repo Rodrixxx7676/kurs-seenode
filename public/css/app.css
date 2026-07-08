@@ -1411,3 +1411,43 @@ html { scroll-behavior: smooth; }
   .cuenta-logout { margin-left: 0; }
   .cuenta-tab { padding: 10px 12px; font-size: 11px; }
 }
+
+/* ═══════════ PANEL DE ADMINISTRACIÓN ═══════════ */
+.admin-wrap { max-width: 1000px; }
+.admin-avatar { background: linear-gradient(135deg, rgba(251,191,36,0.25), rgba(251,191,36,0.05)); border-color: rgba(251,191,36,0.3); }
+.admin-avatar i { color: #fbbf24; }
+
+.admin-stats {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 32px;
+}
+.admin-stat { display: flex; align-items: center; gap: 14px; padding: 20px; border-radius: var(--radius-lg); }
+.admin-stat > i { font-size: 30px; color: rgba(255,255,255,0.75); flex-shrink: 0; }
+.admin-stat-num { font-family: var(--font-display); font-size: 28px; font-weight: 800; line-height: 1; }
+.admin-stat-txt { font-size: 12px; color: rgba(255,255,255,0.6); margin-top: 4px; }
+.admin-stat-sub { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; }
+
+.admin-lista { display: flex; flex-direction: column; gap: 14px; }
+.admin-item { padding: 20px 22px; border-radius: var(--radius-lg); }
+.admin-item-leido { opacity: 0.6; }
+.admin-item-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 10px; }
+.admin-item-top h3 { font-family: var(--font-display); font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
+.admin-item-meta { font-size: 12.5px; color: rgba(255,255,255,0.55); margin-bottom: 6px; }
+.admin-item-meta i { font-size: 14px; }
+.admin-item-meta a { color: rgba(255,255,255,0.7); text-decoration: none; }
+.admin-item-meta a:hover { color: var(--white); text-decoration: underline; }
+.admin-item-desc { font-size: 13.5px; color: rgba(255,255,255,0.75); line-height: 1.5; margin: 10px 0; white-space: pre-wrap; }
+.admin-item-acciones { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+.admin-item-acciones label { font-size: 12px; color: rgba(255,255,255,0.45); font-family: var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; }
+
+.admin-estado-select {
+  background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px; color: var(--white); font-family: var(--font-body); font-size: 13px;
+  padding: 8px 34px 8px 16px; outline: none; cursor: pointer;
+  appearance: none; -webkit-appearance: none; color-scheme: dark;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.5)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 12px center;
+}
+.admin-estado-select option { background: #141414; color: #fff; }
+
+@media (max-width: 800px) { .admin-stats { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 480px) { .admin-stats { grid-template-columns: 1fr; } }

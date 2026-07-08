@@ -518,6 +518,70 @@ app.delete('/api/clientes/:id(\\d+)', requireAuth, requireAdmin, async (req, res
   res.status(204).end();
 });
 
+// ═════════════════════════ ADMINISTRACIÓN (nivel 4) ═════════════════════════
+
+// Estados válidos por entidad → evita que se guarde cualquier texto
+const ESTADOS_PROYECTO   = ['solicitado', 'en_progreso', 'entregado', 'cancelado'];
+const ESTADOS_PROVEEDOR  = ['pendiente', 'aprobado', 'rechazado'];
+
+// GET /api/admin/resumen — conteos para el dashboard
+app.get('/api/admin/resumen', requireAuth, requireAdmin, async (_req, res) => {
+  const q = await pool.query(`
+    SELECT
+      (SELECT COUNT(*) FROM "CLIENTES" WHERE "ACTIVO" = true)              AS clientes,
+      (SELECT COUNT(*) FROM "MENSAJES_CONTACTO")                           AS mensajes,
+      (SELECT COUNT(*) FROM "MENSAJES_CONTACTO" WHERE "LEIDO" = false)     AS mensajes_no_leidos,
+      (SELECT COUNT(*) FROM "PROYECTOS")                                   AS proyectos,
+      (SELECT COUNT(*) FROM "PROYECTOS" WHERE "ESTADO" = 'solicitado')     AS proyectos_nuevos,
+      (SELECT COUNT(*) FROM "PROVEEDORES")                                 AS proveedores,
+      (SELECT COUNT(*) FROM "PROVEEDORES" WHERE "ESTADO" = 'pendiente')    AS proveedores_pendientes
+  `);
+  const r = q.rows[0];
+  res.json({
+    clientes: Number(r.clientes),
+    mensajes: Number(r.mensajes), mensajesNoLeidos: Number(r.mensajes_no_leidos),
+    proyectos: Number(r.proyectos), proyectosNuevos: Number(r.proyectos_nuevos),
+    proveedores: Number(r.proveedores), proveedoresPendientes: Number(r.proveedores_pendientes)
+  });
+});
+
+// GET /api/admin/proyectos — todos los proyectos con el nombre del cliente
+app.get('/api/admin/proyectos', requireAuth, requireAdmin, async (_req, res) => {
+  const q = await pool.query(`
+    SELECT p.*, c."NOMBRE" AS cliente_nombre, c."EMAIL" AS cliente_email
+    FROM "PROYECTOS" p JOIN "CLIENTES" c ON c."ID" = p."CLIENTE_ID"
+    ORDER BY p."FECHA_SOLICITUD" DESC`);
+  res.json(q.rows.map(r => ({
+    id: Number(r.ID), clienteNombre: r.cliente_nombre, clienteEmail: r.cliente_email,
+    titulo: r.TITULO, tipo: r.TIPO, descripcion: r.DESCRIPCION, presupuesto: r.PRESUPUESTO,
+    estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD
+  })));
+});
+
+// PUT /api/admin/proyectos/:id/estado — cambiar el estado de un proyecto
+app.put('/api/admin/proyectos/:id(\\d+)/estado', requireAuth, requireAdmin, async (req, res) => {
+  const estado = (req.body?.estado || '').trim();
+  if (!ESTADOS_PROYECTO.includes(estado)) {
+    return res.status(400).json({ mensaje: 'Estado no válido.' });
+  }
+  const q = await pool.query(
+    'UPDATE "PROYECTOS" SET "ESTADO" = $1 WHERE "ID" = $2', [estado, req.params.id]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proyecto no encontrado.' });
+  res.json({ mensaje: 'Estado actualizado.', estado });
+});
+
+// PUT /api/admin/proveedores/:id/estado — aprobar o rechazar un proveedor
+app.put('/api/admin/proveedores/:id(\\d+)/estado', requireAuth, requireAdmin, async (req, res) => {
+  const estado = (req.body?.estado || '').trim();
+  if (!ESTADOS_PROVEEDOR.includes(estado)) {
+    return res.status(400).json({ mensaje: 'Estado no válido.' });
+  }
+  const q = await pool.query(
+    'UPDATE "PROVEEDORES" SET "ESTADO" = $1 WHERE "ID" = $2', [estado, req.params.id]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proveedor no encontrado.' });
+  res.json({ mensaje: 'Estado actualizado.', estado });
+});
+
 // ═════════════════════════ FRONTEND ═════════════════════════
 // extensions: ['html'] → /login sirve login.html, /contacto sirve contacto.html, etc.
 // Los HTML no se cachean (para que los deploys se vean al instante);

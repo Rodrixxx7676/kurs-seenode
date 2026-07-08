@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KURS — Administración</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0a0a0a" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/app.css?v=6" />
+  <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
+</head>
+<body>
+
+  <div class="stars-layer" aria-hidden="true"></div>
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ══════════════ NAVBAR ══════════════ -->
+  <nav class="navbar glass-bubble">
+    <div class="nav-logo">
+      <a href="/"><img src="/images/LogoSolo.svg" alt="KURS" class="logo-img" /></a>
+    </div>
+    <ul class="nav-links">
+      <li><a href="/"><i class="ti ti-home"></i> Inicio</a></li>
+      <li><a href="/cuenta"><i class="ti ti-user"></i> Mi cuenta</a></li>
+    </ul>
+    <div class="nav-auth">
+      <a href="/login" class="btn-login"><i class="ti ti-user"></i> Iniciar sesión</a>
+      <a href="/registro" class="btn-register glass-bubble-btn"><i class="ti ti-user-plus"></i> Registrarse</a>
+    </div>
+  </nav>
+
+  <div class="cuenta-wrap admin-wrap">
+
+    <header class="cuenta-header">
+      <div class="cuenta-avatar admin-avatar"><i class="ti ti-shield-lock"></i></div>
+      <div>
+        <p class="login-eyebrow">Panel de administración</p>
+        <h1 class="cuenta-nombre">KURS · Admin</h1>
+        <p class="cuenta-sub" id="adminEmail"></p>
+      </div>
+      <a href="/cuenta" class="btn-login cuenta-logout"><i class="ti ti-arrow-left"></i> Volver a mi cuenta</a>
+    </header>
+
+    <!-- Tarjetas de resumen -->
+    <div class="admin-stats" id="adminStats"></div>
+
+    <!-- Pestañas -->
+    <div class="cuenta-tabs">
+      <button class="cuenta-tab active" data-tab="proyectos"><i class="ti ti-rocket"></i> Proyectos</button>
+      <button class="cuenta-tab" data-tab="mensajes"><i class="ti ti-mail"></i> Mensajes</button>
+      <button class="cuenta-tab" data-tab="proveedores"><i class="ti ti-truck-delivery"></i> Proveedores</button>
+      <button class="cuenta-tab" data-tab="clientes"><i class="ti ti-users"></i> Clientes</button>
+    </div>
+
+    <section class="cuenta-panel active" id="panel-proyectos">
+      <div class="cuenta-card glass-bubble">
+        <h2>Proyectos solicitados</h2>
+        <div id="adminProyectos" class="admin-lista"></div>
+      </div>
+    </section>
+
+    <section class="cuenta-panel" id="panel-mensajes">
+      <div class="cuenta-card glass-bubble">
+        <h2>Mensajes de contacto</h2>
+        <div id="adminMensajes" class="admin-lista"></div>
+      </div>
+    </section>
+
+    <section class="cuenta-panel" id="panel-proveedores">
+      <div class="cuenta-card glass-bubble">
+        <h2>Solicitudes de proveedores</h2>
+        <div id="adminProveedores" class="admin-lista"></div>
+      </div>
+    </section>
+
+    <section class="cuenta-panel" id="panel-clientes">
+      <div class="cuenta-card glass-bubble">
+        <h2>Clientes registrados</h2>
+        <div id="adminClientes" class="admin-lista"></div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/js/kurs.js?v=6"></script>
+</body>
+</html>

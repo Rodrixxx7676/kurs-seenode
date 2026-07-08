@@ -474,7 +474,8 @@
   }
 
   // ═════════════ MI CUENTA (/cuenta) ═════════════
-  const cuentaWrap = document.querySelector('.cuenta-wrap');
+  // :not(.admin-wrap) → el panel de admin reutiliza clases pero tiene su propio bloque
+  const cuentaWrap = document.querySelector('.cuenta-wrap:not(.admin-wrap)');
   if (cuentaWrap) {
     const usuario = sesionActiva();
     if (!usuario) { window.location.href = '/login'; return; }
@@ -490,6 +491,9 @@
       if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
       return resp;
     }
+
+    // Enlace de administración solo si el nivel es 4
+    if (parseInt(usuario.nivel, 10) >= 4 && $('tabAdmin')) $('tabAdmin').style.display = '';
 
     $('cuentaLogout').addEventListener('click', function (e) { e.preventDefault(); cerrarSesion(true); });
 
@@ -646,5 +650,179 @@
       } catch { err.textContent = 'No se pudo conectar con el servidor.'; err.style.display = ''; }
       finally { setCargando(envProyBtn, false, '', envProyHtml); }
     });
+  }
+
+  // ═════════════ PANEL DE ADMINISTRACIÓN (/admin) ═════════════
+  const adminWrap = document.querySelector('.admin-wrap');
+  if (adminWrap) {
+    const usuario = sesionActiva();
+    if (!usuario) { window.location.href = '/login'; return; }
+    if (parseInt(usuario.nivel, 10) < 4) { window.location.href = '/cuenta'; return; }
+
+    const token = localStorage.getItem('kurs_token');
+    async function api(url, opciones) {
+      opciones = opciones || {};
+      opciones.headers = Object.assign(
+        { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        opciones.headers || {});
+      const resp = await fetch(url, opciones);
+      if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
+      if (resp.status === 403) { window.location.href = '/cuenta'; throw new Error('sin permiso'); }
+      return resp;
+    }
+    function esc(s) { const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+    function fecha(f) { return new Date(f).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' }); }
+
+    $('adminEmail').textContent = usuario.email;
+
+    // Pestañas
+    document.querySelectorAll('.cuenta-tab[data-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.cuenta-tab').forEach(function (t) { t.classList.remove('active'); });
+        document.querySelectorAll('.cuenta-panel').forEach(function (p) { p.classList.remove('active'); });
+        tab.classList.add('active');
+        $('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ── Tarjetas de resumen ──
+    function cargarResumen() {
+      api('/api/admin/resumen').then(function (r) { return r.json(); }).then(function (s) {
+        $('adminStats').innerHTML = [
+          { i: 'ti-rocket',          n: s.proyectosNuevos,       t: 'Proyectos nuevos',     sub: s.proyectos + ' en total' },
+          { i: 'ti-mail',            n: s.mensajesNoLeidos,      t: 'Mensajes sin leer',    sub: s.mensajes + ' en total' },
+          { i: 'ti-truck-delivery',  n: s.proveedoresPendientes, t: 'Proveedores por revisar', sub: s.proveedores + ' en total' },
+          { i: 'ti-users',           n: s.clientes,              t: 'Clientes activos',     sub: '' }
+        ].map(function (c) {
+          return '<div class="admin-stat glass-bubble"><i class="ti ' + c.i + '"></i>' +
+            '<div><span class="admin-stat-num">' + c.n + '</span>' +
+            '<p class="admin-stat-txt">' + c.t + '</p>' +
+            (c.sub ? '<p class="admin-stat-sub">' + c.sub + '</p>' : '') + '</div></div>';
+        }).join('');
+      }).catch(function () {});
+    }
+    cargarResumen();
+
+    // ── Proyectos ──
+    const ESTADOS_PROY = ['solicitado', 'en_progreso', 'entregado', 'cancelado'];
+    const ETIQ_PROY = { solicitado: 'Solicitado', en_progreso: 'En progreso', entregado: 'Entregado', cancelado: 'Cancelado' };
+    const CLASE_PROY = { solicitado: 'estado-solicitado', en_progreso: 'estado-progreso', entregado: 'estado-entregado', cancelado: 'estado-cancelado' };
+    function cargarAdminProyectos() {
+      api('/api/admin/proyectos').then(function (r) { return r.json(); }).then(function (lista) {
+        if (!lista.length) { $('adminProyectos').innerHTML = vacio('No hay proyectos solicitados.'); return; }
+        $('adminProyectos').innerHTML = lista.map(function (p) {
+          return '<div class="admin-item glass-bubble">' +
+            '<div class="admin-item-top"><h3>' + esc(p.titulo) + '</h3>' +
+              '<span class="proyecto-estado ' + (CLASE_PROY[p.estado] || '') + '">' + (ETIQ_PROY[p.estado] || p.estado) + '</span></div>' +
+            '<p class="admin-item-meta"><i class="ti ti-user"></i> ' + esc(p.clienteNombre) + ' · ' + esc(p.clienteEmail) + '</p>' +
+            '<p class="admin-item-meta"><i class="ti ti-category"></i> ' + esc(p.tipo) +
+              (p.presupuesto ? ' · <i class="ti ti-coin"></i> ' + esc(p.presupuesto) : '') +
+              ' · <i class="ti ti-calendar"></i> ' + fecha(p.fechaSolicitud) + '</p>' +
+            '<p class="admin-item-desc">' + esc(p.descripcion) + '</p>' +
+            '<div class="admin-item-acciones">' +
+              '<label>Estado:</label>' +
+              selectEstado('proy', p.id, p.estado, ESTADOS_PROY, ETIQ_PROY) +
+            '</div></div>';
+        }).join('');
+        conectarSelects('proy', '/api/admin/proyectos/', cargarAdminProyectos);
+      }).catch(function () {});
+    }
+
+    // ── Mensajes ──
+    function cargarAdminMensajes() {
+      api('/api/contacto').then(function (r) { return r.json(); }).then(function (lista) {
+        if (!lista.length) { $('adminMensajes').innerHTML = vacio('No hay mensajes.'); return; }
+        $('adminMensajes').innerHTML = lista.map(function (m) {
+          return '<div class="admin-item glass-bubble' + (m.leido ? ' admin-item-leido' : '') + '">' +
+            '<div class="admin-item-top"><h3>' + esc(m.asunto) + '</h3>' +
+              (m.leido ? '<span class="proyecto-estado estado-entregado">Leído</span>'
+                       : '<span class="proyecto-estado estado-solicitado">Nuevo</span>') + '</div>' +
+            '<p class="admin-item-meta"><i class="ti ti-user"></i> ' + esc(m.nombre) + ' · ' +
+              '<a href="mailto:' + esc(m.email) + '">' + esc(m.email) + '</a>' +
+              ' · <i class="ti ti-calendar"></i> ' + fecha(m.fechaEnvio) + '</p>' +
+            '<p class="admin-item-desc">' + esc(m.mensaje) + '</p>' +
+            (m.leido ? '' : '<div class="admin-item-acciones">' +
+              '<button class="btn-send cuenta-btn-sm" data-leido="' + m.id + '"><i class="ti ti-check"></i> Marcar como leído</button></div>') +
+          '</div>';
+        }).join('');
+        document.querySelectorAll('[data-leido]').forEach(function (b) {
+          b.addEventListener('click', async function () {
+            b.disabled = true;
+            try { await api('/api/contacto/' + b.dataset.leido + '/leido', { method: 'PUT' }); cargarAdminMensajes(); cargarResumen(); } catch {}
+          });
+        });
+      }).catch(function () {});
+    }
+
+    // ── Proveedores ──
+    const ESTADOS_PROV = ['pendiente', 'aprobado', 'rechazado'];
+    const ETIQ_PROV = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
+    const CLASE_PROV = { pendiente: 'estado-solicitado', aprobado: 'estado-entregado', rechazado: 'estado-cancelado' };
+    function cargarAdminProveedores() {
+      api('/api/proveedores').then(function (r) { return r.json(); }).then(function (lista) {
+        if (!lista.length) { $('adminProveedores').innerHTML = vacio('No hay solicitudes de proveedores.'); return; }
+        $('adminProveedores').innerHTML = lista.map(function (p) {
+          return '<div class="admin-item glass-bubble">' +
+            '<div class="admin-item-top"><h3>' + esc(p.razonSocial) + '</h3>' +
+              '<span class="proyecto-estado ' + (CLASE_PROV[p.estado] || '') + '">' + (ETIQ_PROV[p.estado] || p.estado) + '</span></div>' +
+            '<p class="admin-item-meta"><i class="ti ti-id-badge"></i> RUC ' + esc(p.ruc) +
+              ' · <i class="ti ti-user"></i> ' + esc(p.representante) + '</p>' +
+            '<p class="admin-item-meta"><i class="ti ti-mail"></i> ' + esc(p.email) +
+              ' · <i class="ti ti-phone"></i> ' + esc(p.telefono) +
+              ' · <i class="ti ti-category"></i> ' + esc(p.categoria) + '</p>' +
+            (p.descripcion ? '<p class="admin-item-desc">' + esc(p.descripcion) + '</p>' : '') +
+            (p.web ? '<p class="admin-item-meta"><i class="ti ti-world"></i> <a href="' + esc(p.web) + '" target="_blank" rel="noopener">' + esc(p.web) + '</a></p>' : '') +
+            '<div class="admin-item-acciones"><label>Estado:</label>' +
+              selectEstado('prov', p.id, p.estado, ESTADOS_PROV, ETIQ_PROV) + '</div>' +
+          '</div>';
+        }).join('');
+        conectarSelects('prov', '/api/admin/proveedores/', cargarAdminProveedores);
+      }).catch(function () {});
+    }
+
+    // ── Clientes ──
+    function cargarAdminClientes() {
+      api('/api/clientes').then(function (r) { return r.json(); }).then(function (lista) {
+        if (!lista.length) { $('adminClientes').innerHTML = vacio('No hay clientes.'); return; }
+        const NIVELES = { 1: 'Visitante', 2: 'Cliente', 3: 'Colaborador', 4: 'Administrador' };
+        $('adminClientes').innerHTML = lista.map(function (c) {
+          return '<div class="admin-item glass-bubble">' +
+            '<div class="admin-item-top"><h3>' + esc(c.nombre) + '</h3>' +
+              '<span class="proyecto-estado ' + (c.nivel >= 4 ? 'estado-progreso' : 'estado-solicitado') + '">' + (NIVELES[c.nivel] || c.nivel) + '</span></div>' +
+            '<p class="admin-item-meta"><i class="ti ti-mail"></i> ' + esc(c.email) +
+              (c.empresa ? ' · <i class="ti ti-building"></i> ' + esc(c.empresa) : '') +
+              (c.telefono ? ' · <i class="ti ti-phone"></i> ' + esc(c.telefono) : '') + '</p>' +
+            '<p class="admin-item-meta"><i class="ti ti-calendar"></i> Registrado el ' + fecha(c.fechaRegistro) + '</p>' +
+          '</div>';
+        }).join('');
+      }).catch(function () {});
+    }
+
+    // Helpers de renderizado compartidos
+    function vacio(txt) { return '<div class="proyectos-vacio"><i class="ti ti-inbox"></i><p>' + txt + '</p></div>'; }
+    function selectEstado(pref, id, actual, estados, etiquetas) {
+      return '<select class="admin-estado-select" data-' + pref + '="' + id + '">' +
+        estados.map(function (e) {
+          return '<option value="' + e + '"' + (e === actual ? ' selected' : '') + '>' + etiquetas[e] + '</option>';
+        }).join('') + '</select>';
+    }
+    function conectarSelects(pref, base, recargar) {
+      document.querySelectorAll('[data-' + pref + ']').forEach(function (sel) {
+        sel.addEventListener('change', async function () {
+          sel.disabled = true;
+          try {
+            await api(base + sel.dataset[pref] + '/estado', {
+              method: 'PUT', body: JSON.stringify({ estado: sel.value })
+            });
+            recargar(); cargarResumen();
+          } catch { sel.disabled = false; }
+        });
+      });
+    }
+
+    cargarAdminProyectos();
+    cargarAdminMensajes();
+    cargarAdminProveedores();
+    cargarAdminClientes();
   }
 })();
