@@ -1240,3 +1240,54 @@ h1, h2, h3,
   .navbar.open .nav-links a { display: block; text-align: center; }
   .nav-user span { display: none; }   /* en móvil solo el ícono, sin nombre */
 }
+
+/* ═══════════ FORMULARIO DE PROVEEDORES — estilos que faltaban en el CSS original ═══════════ */
+html { scroll-behavior: smooth; }
+
+.prov-form-group .input-wrap { position: relative; display: flex; align-items: center; }
+.prov-form-group .input-wrap i {
+  position: absolute; left: 16px;
+  font-size: 16px; color: rgba(255,255,255,0.3);
+  pointer-events: none; z-index: 1;
+}
+
+.prov-form-group input,
+.prov-form-group select,
+.prov-form-group textarea {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-md);
+  color: var(--white);
+  font-family: var(--font-body); font-size: 14px; font-weight: 300;
+  padding: 14px 16px 14px 44px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  color-scheme: dark;
+  appearance: none; -webkit-appearance: none;
+}
+
+.prov-form-group textarea { resize: vertical; min-height: 130px; }
+
+.prov-form-group select {
+  cursor: pointer;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.45)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 44px;
+}
+.prov-form-group select option { background: #141414; color: #fff; }
+.prov-form-group select:invalid,
+.prov-form-group select option[value=""] { color: rgba(255,255,255,0.4); }
+
+.prov-form-group input:focus,
+.prov-form-group select:focus,
+.prov-form-group textarea:focus {
+  border-color: rgba(255,255,255,0.3);
+  background: rgba(255,255,255,0.08);
+}
+.prov-form-group input::placeholder,
+.prov-form-group textarea::placeholder { color: rgba(255,255,255,0.2); }
+
+/* Botones del hero como enlaces (antes eran botones sin acción) */
+.hero-actions a { text-decoration: none; display: inline-flex; align-items: center; gap: 6px; }

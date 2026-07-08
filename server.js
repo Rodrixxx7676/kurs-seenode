@@ -119,6 +119,17 @@ function requireAuth(req, res, next) {
   }
 }
 
+// Niveles (mismos del modelo original): 1=Visitante, 2=Cliente, 3=Colaborador, 4=Administrador
+function requireAdmin(req, res, next) {
+  if (parseInt(req.user?.nivel, 10) >= 4) return next();
+  return res.status(403).json({ mensaje: 'Requiere permisos de administrador.' });
+}
+
+// Correos que se promueven a administrador al iniciar sesión (env ADMIN_EMAILS,
+// separados por coma). Evita tener que tocar la BD a mano.
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
+  .toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
+
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const app = express();
@@ -211,6 +222,12 @@ app.post('/api/auth/login', rateLimitLogin, async (req, res) => {
 
     fallosPorEmail.delete(emailNorm);
 
+    // Promoción automática a administrador si el correo está en ADMIN_EMAILS
+    if (ADMIN_EMAILS.includes(emailNorm) && cliente.NIVEL < 4) {
+      await pool.query('UPDATE "CLIENTES" SET "NIVEL" = 4 WHERE "ID" = $1', [cliente.ID]);
+      cliente.NIVEL = 4;
+    }
+
     const expira = new Date(Date.now() + JWT_HOURS * 3_600_000);
     const token = jwt.sign(
       { sub: String(cliente.ID), email: cliente.EMAIL, name: cliente.NOMBRE, nivel: String(cliente.NIVEL) },
@@ -255,13 +272,13 @@ app.post('/api/contacto', async (req, res) => {
 });
 
 // GET /api/contacto — lista para uso administrativo
-app.get('/api/contacto', requireAuth, async (_req, res) => {
+app.get('/api/contacto', requireAuth, requireAdmin, async (_req, res) => {
   const q = await pool.query('SELECT * FROM "MENSAJES_CONTACTO" ORDER BY "FECHA_ENVIO" DESC');
   res.json(q.rows.map(mapMensaje));
 });
 
 // PUT /api/contacto/:id/leido
-app.put('/api/contacto/:id(\\d+)/leido', requireAuth, async (req, res) => {
+app.put('/api/contacto/:id(\\d+)/leido', requireAuth, requireAdmin, async (req, res) => {
   const q = await pool.query(
     'UPDATE "MENSAJES_CONTACTO" SET "LEIDO" = true WHERE "ID" = $1 RETURNING *', [req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Mensaje no encontrado.' });
@@ -304,7 +321,7 @@ app.post('/api/proveedores', async (req, res) => {
 });
 
 // GET /api/proveedores — lista para uso administrativo
-app.get('/api/proveedores', requireAuth, async (_req, res) => {
+app.get('/api/proveedores', requireAuth, requireAdmin, async (_req, res) => {
   const q = await pool.query('SELECT * FROM "PROVEEDORES" ORDER BY "FECHA_SOLICITUD" DESC');
   res.json(q.rows.map(r => ({
     id: Number(r.ID), razonSocial: r.RAZON_SOCIAL, ruc: r.RUC, representante: r.REPRESENTANTE,
@@ -315,19 +332,19 @@ app.get('/api/proveedores', requireAuth, async (_req, res) => {
 
 // ═════════════════════════ CLIENTES (CRUD, requiere JWT) ═════════════════════════
 
-app.get('/api/clientes', requireAuth, async (_req, res) => {
+app.get('/api/clientes', requireAuth, requireAdmin, async (_req, res) => {
   const q = await pool.query(
     'SELECT * FROM "CLIENTES" WHERE "ACTIVO" = true ORDER BY "FECHA_REGISTRO" DESC');
   res.json(q.rows.map(mapCliente));
 });
 
-app.get('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
+app.get('/api/clientes/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
   const q = await pool.query('SELECT * FROM "CLIENTES" WHERE "ID" = $1', [req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
   res.json(mapCliente(q.rows[0]));
 });
 
-app.post('/api/clientes', requireAuth, async (req, res) => {
+app.post('/api/clientes', requireAuth, requireAdmin, async (req, res) => {
   const { nombre, email, empresa, telefono } = req.body || {};
   if (!nombre?.trim() || !email?.trim()) {
     return res.status(400).json({ mensaje: 'Nombre y correo son obligatorios.' });
@@ -347,7 +364,7 @@ app.post('/api/clientes', requireAuth, async (req, res) => {
   res.status(201).json(mapCliente(ins.rows[0]));
 });
 
-app.put('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
+app.put('/api/clientes/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
   const { nombre, email, empresa, telefono, activo } = req.body || {};
   const id = req.params.id;
 
@@ -369,7 +386,7 @@ app.put('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
 });
 
 // Baja lógica (Activo = false), igual que en KursApi
-app.delete('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
+app.delete('/api/clientes/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
   const q = await pool.query(
     'UPDATE "CLIENTES" SET "ACTIVO" = false WHERE "ID" = $1', [req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
