@@ -491,9 +491,6 @@
       return resp;
     }
 
-    // Enlace de administración solo si el nivel es 4
-    if (parseInt(usuario.nivel, 10) >= 4) $('tabAdmin').style.display = '';
-
     $('cuentaLogout').addEventListener('click', function (e) { e.preventDefault(); cerrarSesion(true); });
 
     // Pestañas
