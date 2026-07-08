@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>KURS — Mi cuenta</title>
+  <meta name="description" content="Tu panel de cliente en KURS: gestiona tus datos y tus proyectos." />
+  <meta name="theme-color" content="#0a0a0a" />
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/app.css?v=3" />
+  <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
+</head>
+<body>
+
+  <div class="stars-layer" aria-hidden="true"></div>
+
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ══════════════ NAVBAR ══════════════ -->
+  <nav class="navbar glass-bubble">
+    <div class="nav-logo">
+      <a href="/"><img src="/images/LogoSolo.svg" alt="KURS" class="logo-img" /></a>
+    </div>
+    <ul class="nav-links">
+      <li><a href="/#servicios"><i class="ti ti-briefcase"></i> Servicios</a></li>
+      <li><a href="/#nosotros"><i class="ti ti-users"></i> Nosotros</a></li>
+      <li><a href="/contacto"><i class="ti ti-message-circle"></i> Contacto</a></li>
+      <li><a href="/proveedores"><i class="ti ti-truck-delivery"></i> Proveedores</a></li>
+    </ul>
+    <div class="nav-auth">
+      <a href="/login" class="btn-login"><i class="ti ti-user"></i> Iniciar sesión</a>
+      <a href="/registro" class="btn-register glass-bubble-btn"><i class="ti ti-user-plus"></i> Registrarse</a>
+    </div>
+  </nav>
+
+  <!-- ══════════════ PANEL DE CUENTA ══════════════ -->
+  <div class="cuenta-wrap">
+
+    <header class="cuenta-header">
+      <div class="cuenta-avatar"><i class="ti ti-user"></i></div>
+      <div>
+        <p class="login-eyebrow">Panel de cliente</p>
+        <h1 class="cuenta-nombre" id="cuentaNombre">Mi cuenta</h1>
+        <p class="cuenta-sub" id="cuentaEmail"></p>
+      </div>
+      <a href="#" class="btn-login cuenta-logout" id="cuentaLogout"><i class="ti ti-logout"></i> Cerrar sesión</a>
+    </header>
+
+    <!-- Pestañas -->
+    <div class="cuenta-tabs">
+      <button class="cuenta-tab active" data-tab="proyectos"><i class="ti ti-rocket"></i> Mis proyectos</button>
+      <button class="cuenta-tab" data-tab="perfil"><i class="ti ti-id"></i> Mis datos</button>
+      <button class="cuenta-tab" data-tab="seguridad"><i class="ti ti-lock"></i> Seguridad</button>
+      <a class="cuenta-tab cuenta-tab-admin" id="tabAdmin" href="/admin" style="display:none"><i class="ti ti-shield-lock"></i> Administración</a>
+    </div>
+
+    <!-- ── PROYECTOS ── -->
+    <section class="cuenta-panel active" id="panel-proyectos">
+      <div class="cuenta-card glass-bubble">
+        <div class="cuenta-card-head">
+          <h2>Mis proyectos</h2>
+          <button class="btn-send cuenta-btn-sm" id="nuevoProyectoBtn"><i class="ti ti-plus"></i> Solicitar proyecto</button>
+        </div>
+
+        <!-- Formulario nuevo proyecto (oculto por defecto) -->
+        <div class="proyecto-form" id="proyectoForm" style="display:none">
+          <div class="form-group">
+            <label>Título del proyecto <span class="req-star">*</span></label>
+            <div class="input-wrap"><i class="ti ti-tag"></i>
+              <input type="text" id="pTitulo" placeholder="Ej. Página web para mi restaurante" maxlength="200" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Tipo de proyecto <span class="req-star">*</span></label>
+              <div class="input-wrap"><i class="ti ti-category"></i>
+                <select id="pTipo">
+                  <option value="">Selecciona un tipo</option>
+                  <option>Página web</option>
+                  <option>Tienda online</option>
+                  <option>Aplicación web</option>
+                  <option>Automatización de procesos</option>
+                  <option>Integración con IA</option>
+                  <option>Mantenimiento / soporte</option>
+                  <option>Otro</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Presupuesto estimado <span style="opacity:.5;font-size:11px;">(opcional)</span></label>
+              <div class="input-wrap"><i class="ti ti-coin"></i>
+                <input type="text" id="pPresupuesto" placeholder="Ej. S/ 1,500" maxlength="60" />
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Cuéntanos qué necesitas <span class="req-star">*</span></label>
+            <div class="input-wrap">
+              <i class="ti ti-message" style="position:absolute;left:16px;top:14px;"></i>
+              <textarea id="pDescripcion" placeholder="Describe tu idea, objetivos y cualquier referencia..." maxlength="4000"></textarea>
+            </div>
+          </div>
+          <p class="form-error" id="proyectoError" style="display:none"></p>
+          <div class="proyecto-form-actions">
+            <button class="btn-ghost" id="cancelarProyecto">Cancelar</button>
+            <button class="btn-send" id="enviarProyecto"><i class="ti ti-send"></i> Enviar solicitud</button>
+          </div>
+        </div>
+
+        <!-- Lista de proyectos -->
+        <div id="proyectosLista" class="proyectos-lista"></div>
+      </div>
+    </section>
+
+    <!-- ── PERFIL ── -->
+    <section class="cuenta-panel" id="panel-perfil">
+      <div class="cuenta-card glass-bubble">
+        <h2>Mis datos</h2>
+        <div class="form-group">
+          <label>Nombre completo</label>
+          <div class="input-wrap"><i class="ti ti-user"></i>
+            <input type="text" id="perfNombre" maxlength="200" />
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>Empresa</label>
+            <div class="input-wrap"><i class="ti ti-building"></i>
+              <input type="text" id="perfEmpresa" placeholder="(opcional)" maxlength="200" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Teléfono / WhatsApp</label>
+            <div class="input-wrap"><i class="ti ti-phone"></i>
+              <input type="tel" id="perfTelefono" placeholder="(opcional)" maxlength="30" />
+            </div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <div class="input-wrap"><i class="ti ti-mail"></i>
+            <input type="email" id="perfEmail" disabled />
+          </div>
+          <span class="cuenta-hint">El correo no se puede cambiar.</span>
+        </div>
+        <p class="form-error" id="perfilError" style="display:none"></p>
+        <p class="cuenta-ok" id="perfilOk" style="display:none"><i class="ti ti-circle-check"></i> <span></span></p>
+        <div class="form-submit" style="justify-content:flex-start">
+          <button class="btn-send" id="guardarPerfil"><i class="ti ti-device-floppy"></i> Guardar cambios</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── SEGURIDAD ── -->
+    <section class="cuenta-panel" id="panel-seguridad">
+      <div class="cuenta-card glass-bubble">
+        <h2>Cambiar contraseña</h2>
+        <div class="form-group">
+          <label>Contraseña actual</label>
+          <div class="input-wrap"><i class="ti ti-lock"></i>
+            <input type="password" id="pwActual" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Nueva contraseña</label>
+          <div class="input-wrap"><i class="ti ti-lock-plus"></i>
+            <input type="password" id="pwNueva" placeholder="Mínimo 7 caracteres" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Confirmar nueva contraseña</label>
+          <div class="input-wrap"><i class="ti ti-lock-check"></i>
+            <input type="password" id="pwConfirm" />
+          </div>
+        </div>
+        <p class="form-error" id="pwError" style="display:none"></p>
+        <p class="cuenta-ok" id="pwOk" style="display:none"><i class="ti ti-circle-check"></i> <span></span></p>
+        <div class="form-submit" style="justify-content:flex-start">
+          <button class="btn-send" id="cambiarPw"><i class="ti ti-key"></i> Actualizar contraseña</button>
+        </div>
+      </div>
+    </section>
+
+  </div>
+
+  <script src="/js/kurs.js?v=3"></script>
+</body>
+</html>

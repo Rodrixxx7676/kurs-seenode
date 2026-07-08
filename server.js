@@ -61,6 +61,18 @@ async function initSchema() {
       "LEIDO"       boolean NOT NULL DEFAULT false
     );
 
+    CREATE SEQUENCE IF NOT EXISTS "SEQ_PROYECTOS";
+    CREATE TABLE IF NOT EXISTS "PROYECTOS" (
+      "ID"             bigint PRIMARY KEY,
+      "CLIENTE_ID"     bigint NOT NULL REFERENCES "CLIENTES"("ID"),
+      "TITULO"         varchar(200) NOT NULL,
+      "TIPO"           varchar(60) NOT NULL,
+      "DESCRIPCION"    varchar(4000) NOT NULL,
+      "PRESUPUESTO"    varchar(60),
+      "ESTADO"         varchar(20) NOT NULL DEFAULT 'solicitado',
+      "FECHA_SOLICITUD" timestamptz NOT NULL DEFAULT now()
+    );
+
     CREATE SEQUENCE IF NOT EXISTS "SEQ_PROVEEDORES";
     CREATE TABLE IF NOT EXISTS "PROVEEDORES" (
       "ID"              bigint PRIMARY KEY,
@@ -132,6 +144,31 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+// ── reCAPTCHA v3 ─────────────────────────────────────────────────────────────
+// La clave de sitio es pública (va al navegador); la secreta va por env.
+// Si no hay clave secreta configurada, la verificación se omite (útil en local).
+const RECAPTCHA_SITE_KEY  = process.env.RECAPTCHA_SITE_KEY  || '';
+const RECAPTCHA_SECRET    = process.env.RECAPTCHA_SECRET    || '';
+const RECAPTCHA_MIN_SCORE = parseFloat(process.env.RECAPTCHA_MIN_SCORE || '0.5');
+
+async function verificarRecaptcha(token) {
+  if (!RECAPTCHA_SECRET) return { ok: true, omitido: true };   // no configurado → no bloquear
+  if (!token) return { ok: false };
+  try {
+    const params = new URLSearchParams({ secret: RECAPTCHA_SECRET, response: token });
+    const resp = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params
+    });
+    const data = await resp.json();
+    return { ok: data.success === true && (data.score ?? 1) >= RECAPTCHA_MIN_SCORE, score: data.score };
+  } catch (err) {
+    console.error('recaptcha:', err.message);
+    return { ok: false };
+  }
+}
+
 const app = express();
 app.set('trust proxy', 1);          // Seenode termina TLS en su proxy
 app.disable('x-powered-by');
@@ -155,6 +192,11 @@ app.get('/api/salud', (_req, res) => {
   res.json({ servidor: 'ok', baseDeDatos: dbLista ? 'conectada' : 'sin conexión' });
 });
 
+// ── Configuración pública para el frontend ───────────────────────────────────
+app.get('/api/config', (_req, res) => {
+  res.json({ recaptchaSiteKey: RECAPTCHA_SITE_KEY });
+});
+
 // ═════════════════════════ AUTH ═════════════════════════
 
 // POST /api/auth/registro
@@ -166,6 +208,9 @@ app.post('/api/auth/registro', async (req, res) => {
   if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 ||
       email.trim().length > 320 || (empresa?.trim().length ?? 0) > 200 || password.length > 100) {
     return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
+  if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
+    return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
   }
 
   const emailNorm = email.trim().toLowerCase();
@@ -257,6 +302,9 @@ app.post('/api/contacto', async (req, res) => {
       email.trim().length > 320 || asunto.trim().length > 300 || mensaje.trim().length > 4000) {
     return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
   }
+  if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
+    return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
+  }
 
   try {
     await pool.query(
@@ -285,6 +333,80 @@ app.put('/api/contacto/:id(\\d+)/leido', requireAuth, requireAdmin, async (req, 
   res.json(mapMensaje(q.rows[0]));
 });
 
+// ═════════════════════════ MI CUENTA (usuario autenticado sobre sí mismo) ═════════════════════════
+
+// GET /api/cuenta — perfil del usuario en sesión
+app.get('/api/cuenta', requireAuth, async (req, res) => {
+  const q = await pool.query(
+    'SELECT "ID","NOMBRE","EMAIL","EMPRESA","TELEFONO","FECHA_REGISTRO","NIVEL" FROM "CLIENTES" WHERE "ID" = $1',
+    [req.user.sub]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Cuenta no encontrada.' });
+  const c = q.rows[0];
+  res.json({ id: Number(c.ID), nombre: c.NOMBRE, email: c.EMAIL, empresa: c.EMPRESA,
+             telefono: c.TELEFONO, fechaRegistro: c.FECHA_REGISTRO, nivel: c.NIVEL });
+});
+
+// PUT /api/cuenta — actualizar nombre, empresa y teléfono propios
+app.put('/api/cuenta', requireAuth, async (req, res) => {
+  const { nombre, empresa, telefono } = req.body || {};
+  if (!nombre?.trim()) return res.status(400).json({ mensaje: 'El nombre es obligatorio.' });
+  if (nombre.trim().length > 200 || (empresa?.trim().length ?? 0) > 200 || (telefono?.trim().length ?? 0) > 30) {
+    return res.status(400).json({ mensaje: 'Datos demasiado largos.' });
+  }
+  const q = await pool.query(
+    `UPDATE "CLIENTES" SET "NOMBRE" = $1, "EMPRESA" = $2, "TELEFONO" = $3 WHERE "ID" = $4
+     RETURNING "NOMBRE","EMPRESA","TELEFONO"`,
+    [nombre.trim(), empresa?.trim() || null, telefono?.trim() || null, req.user.sub]);
+  res.json({ mensaje: 'Datos actualizados correctamente.', ...q.rows[0] });
+});
+
+// PUT /api/cuenta/password — cambiar la propia contraseña
+app.put('/api/cuenta/password', requireAuth, async (req, res) => {
+  const { actual, nueva } = req.body || {};
+  if (!actual || !nueva) return res.status(400).json({ mensaje: 'Debes indicar la contraseña actual y la nueva.' });
+  if (nueva.length < 7 || nueva.length > 100) {
+    return res.status(400).json({ mensaje: 'La nueva contraseña debe tener entre 7 y 100 caracteres.' });
+  }
+
+  const q = await pool.query('SELECT "PASSWORD_HASH" FROM "CLIENTES" WHERE "ID" = $1', [req.user.sub]);
+  const hash = q.rows[0]?.PASSWORD_HASH;
+  if (!hash || !bcrypt.compareSync(actual, hash)) {
+    return res.status(401).json({ mensaje: 'La contraseña actual no es correcta.' });
+  }
+
+  await pool.query('UPDATE "CLIENTES" SET "PASSWORD_HASH" = $1 WHERE "ID" = $2',
+    [bcrypt.hashSync(nueva, 11), req.user.sub]);
+  res.json({ mensaje: 'Contraseña actualizada correctamente.' });
+});
+
+// GET /api/cuenta/proyectos — proyectos solicitados por el usuario
+app.get('/api/cuenta/proyectos', requireAuth, async (req, res) => {
+  const q = await pool.query(
+    'SELECT * FROM "PROYECTOS" WHERE "CLIENTE_ID" = $1 ORDER BY "FECHA_SOLICITUD" DESC', [req.user.sub]);
+  res.json(q.rows.map(r => ({
+    id: Number(r.ID), titulo: r.TITULO, tipo: r.TIPO, descripcion: r.DESCRIPCION,
+    presupuesto: r.PRESUPUESTO, estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD
+  })));
+});
+
+// POST /api/cuenta/proyectos — solicitar un nuevo proyecto
+app.post('/api/cuenta/proyectos', requireAuth, async (req, res) => {
+  const { titulo, tipo, descripcion, presupuesto } = req.body || {};
+  if (!titulo?.trim() || !tipo?.trim() || !descripcion?.trim()) {
+    return res.status(400).json({ mensaje: 'Título, tipo y descripción son obligatorios.' });
+  }
+  if (titulo.trim().length > 200 || tipo.trim().length > 60 ||
+      descripcion.trim().length > 4000 || (presupuesto?.trim().length ?? 0) > 60) {
+    return res.status(400).json({ mensaje: 'Datos demasiado largos.' });
+  }
+
+  const ins = await pool.query(
+    `INSERT INTO "PROYECTOS" ("ID","CLIENTE_ID","TITULO","TIPO","DESCRIPCION","PRESUPUESTO")
+     VALUES (nextval('"SEQ_PROYECTOS"'), $1, $2, $3, $4, $5) RETURNING "ID"`,
+    [req.user.sub, titulo.trim(), tipo.trim(), descripcion.trim(), presupuesto?.trim() || null]);
+  res.json({ mensaje: '¡Proyecto solicitado! Te contactaremos pronto.', id: Number(ins.rows[0].ID) });
+});
+
 // ═════════════════════════ PROVEEDORES ═════════════════════════
 
 // POST /api/proveedores — público, guarda la solicitud del portal de proveedores
@@ -303,6 +425,9 @@ app.post('/api/proveedores', async (req, res) => {
       telefono.trim().length > 30 || categoria.trim().length > 100 ||
       (descripcion?.trim().length ?? 0) > 4000 || (web?.trim().length ?? 0) > 300) {
     return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
+  if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
+    return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
   }
 
   try {

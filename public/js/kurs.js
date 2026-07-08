@@ -5,6 +5,38 @@
 (function () {
   'use strict';
 
+  // ── reCAPTCHA v3 ────────────────────────────────────────────────────────────
+  // Carga el script de Google solo si hay clave configurada en el servidor.
+  let recaptchaSiteKey = null;
+  const recaptchaLista = fetch('/api/config')
+    .then(function (r) { return r.json(); })
+    .then(function (cfg) {
+      recaptchaSiteKey = cfg.recaptchaSiteKey || null;
+      if (!recaptchaSiteKey) return;
+      return new Promise(function (resolve) {
+        const s = document.createElement('script');
+        s.src = 'https://www.google.com/recaptcha/api.js?render=' + recaptchaSiteKey;
+        s.onload = resolve;
+        s.onerror = function () { recaptchaSiteKey = null; resolve(); };
+        document.head.appendChild(s);
+      });
+    })
+    .catch(function () { recaptchaSiteKey = null; });
+
+  // Devuelve el token para una acción, o null si reCAPTCHA no está activo.
+  async function recaptchaToken(accion) {
+    await recaptchaLista;
+    if (!recaptchaSiteKey || !window.grecaptcha) return null;
+    try {
+      return await new Promise(function (resolve) {
+        window.grecaptcha.ready(function () {
+          window.grecaptcha.execute(recaptchaSiteKey, { action: accion })
+            .then(resolve).catch(function () { resolve(null); });
+        });
+      });
+    } catch { return null; }
+  }
+
   // ── Estrellas de fondo (port de StarField.razor, misma aritmética) ────────
   const starsLayer = document.querySelector('.stars-layer');
   if (starsLayer) {
@@ -119,20 +151,58 @@
     if (recargar) window.location.href = '/';
   }
 
-  // Navbar según sesión: saluda al usuario y ofrece cerrar sesión
+  // Navbar según sesión: saluda al usuario, enlaza a "Mi cuenta" y ofrece cerrar sesión
   const navAuth = document.querySelector('.nav-auth');
   if (navAuth) {
     const usuario = sesionActiva();
     if (usuario && usuario.nombre) {
       const primerNombre = usuario.nombre.split(' ')[0];
       navAuth.innerHTML =
-        '<span class="nav-user"><i class="ti ti-user-circle"></i><span>' + primerNombre + '</span></span>' +
+        '<a href="/cuenta" class="nav-user"><i class="ti ti-user-circle"></i><span>' + primerNombre + '</span></a>' +
         '<a href="#" class="btn-login" id="logoutBtn"><i class="ti ti-logout"></i> Cerrar sesión</a>';
       document.getElementById('logoutBtn').addEventListener('click', function (e) {
         e.preventDefault();
         cerrarSesion(true);
       });
+      iniciarVigilanteInactividad();
     }
+  }
+
+  // ── Cierre automático por inactividad (30 min) con aviso 1 min antes ────────
+  const INACTIVO_MS = 30 * 60_000;
+  const AVISO_MS = 60_000;   // avisa 60 s antes de cerrar
+  function iniciarVigilanteInactividad() {
+    let avisoMostrado = false;
+    let modal = null;
+
+    function marcarActividad() {
+      localStorage.setItem('kurs_actividad', Date.now().toString());
+      if (avisoMostrado && modal) { modal.remove(); modal = null; avisoMostrado = false; }
+    }
+    ['mousemove', 'keydown', 'click', 'scroll', 'touchstart'].forEach(function (e) {
+      document.addEventListener(e, marcarActividad, { passive: true });
+    });
+
+    setInterval(function () {
+      const act = parseInt(localStorage.getItem('kurs_actividad') || '0', 10);
+      if (!localStorage.getItem('kurs_token')) return;
+      const inactivo = Date.now() - act;
+
+      if (inactivo >= INACTIVO_MS) { cerrarSesion(true); return; }
+
+      if (inactivo >= INACTIVO_MS - AVISO_MS && !avisoMostrado) {
+        avisoMostrado = true;
+        modal = document.createElement('div');
+        modal.className = 'sesion-aviso glass-bubble';
+        modal.innerHTML =
+          '<i class="ti ti-clock-exclamation"></i>' +
+          '<div><strong>¿Sigues ahí?</strong>' +
+          '<p>Tu sesión se cerrará pronto por inactividad.</p></div>' +
+          '<button class="glass-bubble-btn" id="seguirActivo">Seguir conectado</button>';
+        document.body.appendChild(modal);
+        document.getElementById('seguirActivo').addEventListener('click', marcarActividad);
+      }
+    }, 5_000);
   }
 
   // ── Menú móvil (hamburguesa) ──────────────────────────────────────────────
@@ -272,10 +342,11 @@
 
       setCargando(registroBtn, true, 'Creando cuenta...', htmlNormal);
       try {
+        const captcha = await recaptchaToken('registro');
         const resp = await fetch('/api/auth/registro', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre: nombre, email: email, password: password, empresa: empresa || null })
+          body: JSON.stringify({ nombre: nombre, email: email, password: password, empresa: empresa || null, recaptchaToken: captcha })
         });
 
         if (resp.ok) {
@@ -323,10 +394,11 @@
 
       setCargando(contactoBtn, true, 'Enviando...', htmlNormal);
       try {
+        const captcha = await recaptchaToken('contacto');
         const resp = await fetch('/api/contacto', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre: nombre, email: email, asunto: asunto, mensaje: mensaje })
+          body: JSON.stringify({ nombre: nombre, email: email, asunto: asunto, mensaje: mensaje, recaptchaToken: captcha })
         });
 
         if (resp.ok) {
@@ -381,7 +453,7 @@
           body: JSON.stringify({
             razonSocial: razonSocial, ruc: ruc, representante: representante,
             email: email, telefono: telefono, categoria: categoria,
-            descripcion: descripcion, web: web
+            descripcion: descripcion, web: web, recaptchaToken: await recaptchaToken('proveedores')
           })
         });
 
@@ -399,5 +471,183 @@
       }
     });
     enviarConEnter($('provForm'), provBtn);
+  }
+
+  // ═════════════ MI CUENTA (/cuenta) ═════════════
+  const cuentaWrap = document.querySelector('.cuenta-wrap');
+  if (cuentaWrap) {
+    const usuario = sesionActiva();
+    if (!usuario) { window.location.href = '/login'; return; }
+
+    const token = localStorage.getItem('kurs_token');
+    // fetch autenticado; si el token caducó (401) cierra sesión
+    async function api(url, opciones) {
+      opciones = opciones || {};
+      opciones.headers = Object.assign(
+        { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        opciones.headers || {});
+      const resp = await fetch(url, opciones);
+      if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
+      return resp;
+    }
+
+    // Enlace de administración solo si el nivel es 4
+    if (parseInt(usuario.nivel, 10) >= 4) $('tabAdmin').style.display = '';
+
+    $('cuentaLogout').addEventListener('click', function (e) { e.preventDefault(); cerrarSesion(true); });
+
+    // Pestañas
+    document.querySelectorAll('.cuenta-tab[data-tab]').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.cuenta-tab').forEach(function (t) { t.classList.remove('active'); });
+        document.querySelectorAll('.cuenta-panel').forEach(function (p) { p.classList.remove('active'); });
+        tab.classList.add('active');
+        $('panel-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ── Cargar perfil ──
+    api('/api/cuenta').then(function (r) { return r.json(); }).then(function (c) {
+      $('cuentaNombre').textContent = c.nombre;
+      $('cuentaEmail').textContent = c.email + (c.empresa ? ' · ' + c.empresa : '');
+      $('perfNombre').value = c.nombre || '';
+      $('perfEmpresa').value = c.empresa || '';
+      $('perfTelefono').value = c.telefono || '';
+      $('perfEmail').value = c.email || '';
+    }).catch(function () {});
+
+    // ── Guardar perfil ──
+    const guardarBtn = $('guardarPerfil');
+    const guardarHtml = guardarBtn.innerHTML;
+    guardarBtn.addEventListener('click', async function () {
+      const err = $('perfilError'), ok = $('perfilOk');
+      err.style.display = 'none'; ok.style.display = 'none';
+      const nombre = $('perfNombre').value.trim();
+      if (!nombre) { err.textContent = 'El nombre es obligatorio.'; err.style.display = ''; return; }
+
+      setCargando(guardarBtn, true, 'Guardando...', guardarHtml);
+      try {
+        const resp = await api('/api/cuenta', {
+          method: 'PUT',
+          body: JSON.stringify({
+            nombre: nombre,
+            empresa: $('perfEmpresa').value.trim(),
+            telefono: $('perfTelefono').value.trim()
+          })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          ok.querySelector('span').textContent = data.mensaje;
+          ok.style.display = '';
+          $('cuentaNombre').textContent = nombre;
+          // refleja el nuevo nombre en el saludo del navbar guardado
+          const u = JSON.parse(localStorage.getItem('kurs_user') || '{}');
+          u.nombre = nombre; localStorage.setItem('kurs_user', JSON.stringify(u));
+        } else { err.textContent = data.mensaje; err.style.display = ''; }
+      } catch { err.textContent = 'No se pudo conectar con el servidor.'; err.style.display = ''; }
+      finally { setCargando(guardarBtn, false, '', guardarHtml); }
+    });
+
+    // ── Cambiar contraseña ──
+    const pwBtn = $('cambiarPw');
+    const pwHtml = pwBtn.innerHTML;
+    pwBtn.addEventListener('click', async function () {
+      const err = $('pwError'), ok = $('pwOk');
+      err.style.display = 'none'; ok.style.display = 'none';
+      const actual = $('pwActual').value, nueva = $('pwNueva').value, confirm = $('pwConfirm').value;
+
+      if (!actual || !nueva) { err.textContent = 'Completa todos los campos.'; err.style.display = ''; return; }
+      if (nueva.length < 7) { err.textContent = 'La nueva contraseña debe tener al menos 7 caracteres.'; err.style.display = ''; return; }
+      if (nueva !== confirm) { err.textContent = 'Las contraseñas nuevas no coinciden.'; err.style.display = ''; return; }
+
+      setCargando(pwBtn, true, 'Actualizando...', pwHtml);
+      try {
+        const resp = await api('/api/cuenta/password', {
+          method: 'PUT',
+          body: JSON.stringify({ actual: actual, nueva: nueva })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          ok.querySelector('span').textContent = data.mensaje;
+          ok.style.display = '';
+          $('pwActual').value = $('pwNueva').value = $('pwConfirm').value = '';
+        } else { err.textContent = data.mensaje; err.style.display = ''; }
+      } catch { err.textContent = 'No se pudo conectar con el servidor.'; err.style.display = ''; }
+      finally { setCargando(pwBtn, false, '', pwHtml); }
+    });
+
+    // ── Proyectos: listar ──
+    const listaEl = $('proyectosLista');
+    const ESTADOS = {
+      solicitado:  { txt: 'Solicitado',  clase: 'estado-solicitado' },
+      en_progreso: { txt: 'En progreso', clase: 'estado-progreso' },
+      entregado:   { txt: 'Entregado',   clase: 'estado-entregado' },
+      cancelado:   { txt: 'Cancelado',   clase: 'estado-cancelado' }
+    };
+    function cargarProyectos() {
+      api('/api/cuenta/proyectos').then(function (r) { return r.json(); }).then(function (proyectos) {
+        if (!proyectos.length) {
+          listaEl.innerHTML = '<div class="proyectos-vacio"><i class="ti ti-rocket"></i>' +
+            '<p>Aún no tienes proyectos. ¡Solicita el primero y empecemos a construir!</p></div>';
+          return;
+        }
+        listaEl.innerHTML = proyectos.map(function (p) {
+          const e = ESTADOS[p.estado] || { txt: p.estado, clase: '' };
+          const fecha = new Date(p.fechaSolicitud).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', year: 'numeric' });
+          return '<div class="proyecto-item glass-bubble">' +
+            '<div class="proyecto-item-top">' +
+              '<h3>' + escapar(p.titulo) + '</h3>' +
+              '<span class="proyecto-estado ' + e.clase + '">' + e.txt + '</span>' +
+            '</div>' +
+            '<p class="proyecto-tipo"><i class="ti ti-category"></i> ' + escapar(p.tipo) +
+              (p.presupuesto ? ' · <i class="ti ti-coin"></i> ' + escapar(p.presupuesto) : '') + '</p>' +
+            '<p class="proyecto-desc">' + escapar(p.descripcion) + '</p>' +
+            '<p class="proyecto-fecha"><i class="ti ti-calendar"></i> Solicitado el ' + fecha + '</p>' +
+          '</div>';
+        }).join('');
+      }).catch(function () {});
+    }
+    function escapar(s) {
+      const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
+    }
+    cargarProyectos();
+
+    // ── Proyectos: mostrar/ocultar formulario ──
+    const proyForm = $('proyectoForm');
+    $('nuevoProyectoBtn').addEventListener('click', function () {
+      proyForm.style.display = proyForm.style.display === 'none' ? '' : 'none';
+    });
+    $('cancelarProyecto').addEventListener('click', function () { proyForm.style.display = 'none'; });
+
+    // ── Proyectos: enviar solicitud ──
+    const envProyBtn = $('enviarProyecto');
+    const envProyHtml = envProyBtn.innerHTML;
+    envProyBtn.addEventListener('click', async function () {
+      const err = $('proyectoError');
+      err.style.display = 'none';
+      const titulo = $('pTitulo').value.trim();
+      const tipo = $('pTipo').value;
+      const descripcion = $('pDescripcion').value.trim();
+      const presupuesto = $('pPresupuesto').value.trim();
+
+      if (!titulo) { err.textContent = 'Ponle un título a tu proyecto.'; err.style.display = ''; return; }
+      if (!tipo) { err.textContent = 'Selecciona el tipo de proyecto.'; err.style.display = ''; return; }
+      if (!descripcion) { err.textContent = 'Cuéntanos qué necesitas.'; err.style.display = ''; return; }
+
+      setCargando(envProyBtn, true, 'Enviando...', envProyHtml);
+      try {
+        const resp = await api('/api/cuenta/proyectos', {
+          method: 'POST',
+          body: JSON.stringify({ titulo: titulo, tipo: tipo, descripcion: descripcion, presupuesto: presupuesto })
+        });
+        const data = await resp.json();
+        if (resp.ok) {
+          $('pTitulo').value = ''; $('pTipo').value = ''; $('pDescripcion').value = ''; $('pPresupuesto').value = '';
+          proyForm.style.display = 'none';
+          cargarProyectos();
+        } else { err.textContent = data.mensaje; err.style.display = ''; }
+      } catch { err.textContent = 'No se pudo conectar con el servidor.'; err.style.display = ''; }
+      finally { setCargando(envProyBtn, false, '', envProyHtml); }
+    });
   }
 })();
