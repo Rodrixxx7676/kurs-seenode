@@ -89,6 +89,75 @@
   const $ = function (id) { return document.getElementById(id); };
   const emailValido = function (v) { return v.includes('@') && v.includes('.'); };
 
+  // Enviar con Enter: cualquier input dentro del contenedor dispara el botón
+  function enviarConEnter(contenedor, btn) {
+    contenedor.querySelectorAll('input').forEach(function (input) {
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); btn.click(); }
+      });
+    });
+  }
+
+  // ── Sesión de usuario (mismas reglas que AuthService: expiración + 30 min inactividad) ──
+  function sesionActiva() {
+    const token = localStorage.getItem('kurs_token');
+    if (!token) return null;
+
+    const expira = localStorage.getItem('kurs_expira');
+    if (expira && Date.now() >= Date.parse(expira)) { cerrarSesion(false); return null; }
+
+    const act = parseInt(localStorage.getItem('kurs_actividad') || '0', 10);
+    if (act && Date.now() - act > 30 * 60_000) { cerrarSesion(false); return null; }
+
+    try { return JSON.parse(localStorage.getItem('kurs_user')); } catch { return null; }
+  }
+
+  function cerrarSesion(recargar) {
+    ['kurs_token', 'kurs_user', 'kurs_expira', 'kurs_actividad'].forEach(function (k) {
+      localStorage.removeItem(k);
+    });
+    if (recargar) window.location.href = '/';
+  }
+
+  // Navbar según sesión: saluda al usuario y ofrece cerrar sesión
+  const navAuth = document.querySelector('.nav-auth');
+  if (navAuth) {
+    const usuario = sesionActiva();
+    if (usuario && usuario.nombre) {
+      const primerNombre = usuario.nombre.split(' ')[0];
+      navAuth.innerHTML =
+        '<span class="nav-user"><i class="ti ti-user-circle"></i><span>' + primerNombre + '</span></span>' +
+        '<a href="#" class="btn-login" id="logoutBtn"><i class="ti ti-logout"></i> Cerrar sesión</a>';
+      document.getElementById('logoutBtn').addEventListener('click', function (e) {
+        e.preventDefault();
+        cerrarSesion(true);
+      });
+    }
+  }
+
+  // ── Menú móvil (hamburguesa) ──────────────────────────────────────────────
+  const navbar = document.querySelector('.navbar');
+  if (navbar && navbar.querySelector('.nav-links')) {
+    const toggle = document.createElement('button');
+    toggle.className = 'nav-toggle';
+    toggle.setAttribute('aria-label', 'Abrir menú');
+    toggle.innerHTML = '<i class="ti ti-menu-2"></i>';
+    toggle.addEventListener('click', function () {
+      const abierto = navbar.classList.toggle('open');
+      toggle.innerHTML = abierto ? '<i class="ti ti-x"></i>' : '<i class="ti ti-menu-2"></i>';
+    });
+    (navAuth || navbar).appendChild(toggle);
+  }
+
+  // ── Fondo del navbar al hacer scroll (el CSS .navbar.scrolled ya existía) ──
+  if (navbar) {
+    const alScroll = function () {
+      navbar.classList.toggle('scrolled', window.scrollY > 10);
+    };
+    document.addEventListener('scroll', alScroll, { passive: true });
+    alScroll();
+  }
+
   function setCargando(btn, cargando, textoCarga, htmlNormal) {
     btn.disabled = cargando;
     btn.innerHTML = cargando
@@ -150,6 +219,7 @@
         setCargando(loginBtn, false, '', htmlNormal);
       }
     });
+    enviarConEnter(document.querySelector('.login-fields'), loginBtn);
   }
 
   // ═════════════ REGISTRO (port de Registro.cs) ═════════════
@@ -226,6 +296,7 @@
         if (registroBtn.style.display !== 'none') setCargando(registroBtn, false, '', htmlNormal);
       }
     });
+    enviarConEnter(document.querySelector('.login-fields'), registroBtn);
   }
 
   // ═════════════ CONTACTO (port de Contacto.cs) ═════════════
@@ -272,15 +343,15 @@
         setCargando(contactoBtn, false, '', htmlNormal);
       }
     });
+    enviarConEnter($('contactoForm'), contactoBtn);
   }
 
-  // ═════════════ PROVEEDORES (port de Proveedores.cs) ═════════════
-  // El endpoint /api/proveedores está pendiente en el backend original;
-  // se mantiene el mismo comportamiento (validación + confirmación).
+  // ═════════════ PROVEEDORES ═════════════
+  // Guarda la solicitud vía POST /api/proveedores (tabla PROVEEDORES).
   const provBtn = $('provBtn');
   if (provBtn) {
     const htmlNormal = provBtn.innerHTML;
-    provBtn.addEventListener('click', function () {
+    provBtn.addEventListener('click', async function () {
       const error = $('provError');
       error.style.display = 'none';
 
@@ -290,6 +361,8 @@
       const email = $('provEmail').value.trim();
       const telefono = $('telefono').value.trim();
       const categoria = $('categoria').value;
+      const descripcion = $('descripcion').value.trim();
+      const web = $('web').value.trim();
 
       function fallo(msg) { error.textContent = msg; error.style.display = ''; }
 
@@ -301,10 +374,30 @@
       if (!categoria) return fallo('Selecciona una categoría.');
 
       setCargando(provBtn, true, 'Enviando...', htmlNormal);
-      setTimeout(function () {
-        $('provForm').style.display = 'none';
-        $('provOk').style.display = '';
-      }, 800);
+      try {
+        const resp = await fetch('/api/proveedores', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razonSocial: razonSocial, ruc: ruc, representante: representante,
+            email: email, telefono: telefono, categoria: categoria,
+            descripcion: descripcion, web: web
+          })
+        });
+
+        if (resp.ok) {
+          $('provForm').style.display = 'none';
+          $('provOk').style.display = '';
+        } else {
+          const data = await resp.json().catch(function () { return {}; });
+          fallo(data.mensaje || 'Ocurrió un problema al enviar. Inténtalo de nuevo.');
+        }
+      } catch {
+        fallo('No se pudo conectar con el servidor. Inténtalo de nuevo.');
+      } finally {
+        setCargando(provBtn, false, '', htmlNormal);
+      }
     });
+    enviarConEnter($('provForm'), provBtn);
   }
 })();

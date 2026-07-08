@@ -1203,3 +1203,40 @@ h1, h2, h3,
 .pw-rule i  { font-size: 14px; }
 .pw-rule.ok   { color: #4ade80; }
 .pw-rule.fail { color: #f87171; }
+
+/* ═══════════ MEJORAS DE PRODUCCIÓN (menú móvil + sesión de usuario) ═══════════ */
+
+/* Botón hamburguesa — solo visible en móvil */
+.nav-toggle {
+  display: none;
+  background: none; border: none; cursor: pointer;
+  color: rgba(255,255,255,0.8); font-size: 22px;
+  padding: 4px 8px; line-height: 1;
+  border-radius: 999px;
+  transition: color 0.2s, background 0.2s;
+}
+.nav-toggle:hover { color: var(--white); background: rgba(255,255,255,0.08); }
+
+/* Usuario con sesión iniciada en el navbar */
+.nav-user {
+  display: inline-flex; align-items: center; gap: 6px;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 8px 4px 8px 12px;
+  white-space: nowrap;
+  opacity: 0.9;
+}
+.nav-user i { font-size: 16px; }
+
+@media (max-width: 900px) {
+  .nav-toggle { display: block; }
+  .navbar.open { border-radius: 24px; }
+  .navbar.open .nav-links {
+    display: flex; flex-direction: column; gap: 2px;
+    grid-column: 1 / -1; grid-row: 2;
+    padding: 10px 4px 6px;
+  }
+  .navbar.open .nav-links a { display: block; text-align: center; }
+  .nav-user span { display: none; }   /* en móvil solo el ícono, sin nombre */
+}

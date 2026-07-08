@@ -6,9 +6,10 @@
 //    PUT  /api/contacto/:id/leido (auth)
 //    GET/POST/PUT/DELETE /api/clientes (auth)
 // ═══════════════════════════════════════════════════════════════════════════
-const express = require('express');
-const path    = require('path');
-const crypto  = require('crypto');
+const express     = require('express');
+const path        = require('path');
+const crypto      = require('crypto');
+const compression = require('compression');
 const bcrypt  = require('bcryptjs');
 const jwt     = require('jsonwebtoken');
 const { Pool } = require('pg');
@@ -59,6 +60,21 @@ async function initSchema() {
       "FECHA_ENVIO" timestamptz NOT NULL DEFAULT now(),
       "LEIDO"       boolean NOT NULL DEFAULT false
     );
+
+    CREATE SEQUENCE IF NOT EXISTS "SEQ_PROVEEDORES";
+    CREATE TABLE IF NOT EXISTS "PROVEEDORES" (
+      "ID"              bigint PRIMARY KEY,
+      "RAZON_SOCIAL"    varchar(200) NOT NULL,
+      "RUC"             varchar(11) NOT NULL,
+      "REPRESENTANTE"   varchar(200) NOT NULL,
+      "EMAIL"           varchar(320) NOT NULL,
+      "TELEFONO"        varchar(30) NOT NULL,
+      "CATEGORIA"       varchar(100) NOT NULL,
+      "DESCRIPCION"     varchar(4000),
+      "WEB"             varchar(300),
+      "FECHA_SOLICITUD" timestamptz NOT NULL DEFAULT now(),
+      "ESTADO"          varchar(20) NOT NULL DEFAULT 'pendiente'
+    );
   `);
 }
 
@@ -103,9 +119,24 @@ function requireAuth(req, res, next) {
   }
 }
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const app = express();
 app.set('trust proxy', 1);          // Seenode termina TLS en su proxy
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(compression());
+app.use(express.json({ limit: '32kb' }));
+
+// ── Cabeceras de seguridad ───────────────────────────────────────────────────
+app.use((_req, res, next) => {
+  res.set({
+    'X-Content-Type-Options': 'nosniff',
+    'X-Frame-Options': 'DENY',
+    'Referrer-Policy': 'strict-origin-when-cross-origin',
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+  });
+  next();
+});
 
 // ── Diagnóstico rápido: GET /api/salud ──────────────────────────────────────
 let dbLista = false;
@@ -120,6 +151,10 @@ app.post('/api/auth/registro', async (req, res) => {
   const { nombre, email, password, empresa } = req.body || {};
   if (!nombre?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ mensaje: 'Nombre, correo y contraseña son obligatorios.' });
+  }
+  if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 ||
+      email.trim().length > 320 || (empresa?.trim().length ?? 0) > 200 || password.length > 100) {
+    return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
   }
 
   const emailNorm = email.trim().toLowerCase();
@@ -201,6 +236,10 @@ app.post('/api/contacto', async (req, res) => {
   if (!nombre?.trim() || !email?.trim() || !asunto?.trim() || !mensaje?.trim()) {
     return res.status(400).json({ mensaje: 'Todos los campos son obligatorios.' });
   }
+  if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 ||
+      email.trim().length > 320 || asunto.trim().length > 300 || mensaje.trim().length > 4000) {
+    return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
 
   try {
     await pool.query(
@@ -227,6 +266,51 @@ app.put('/api/contacto/:id(\\d+)/leido', requireAuth, async (req, res) => {
     'UPDATE "MENSAJES_CONTACTO" SET "LEIDO" = true WHERE "ID" = $1 RETURNING *', [req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Mensaje no encontrado.' });
   res.json(mapMensaje(q.rows[0]));
+});
+
+// ═════════════════════════ PROVEEDORES ═════════════════════════
+
+// POST /api/proveedores — público, guarda la solicitud del portal de proveedores
+app.post('/api/proveedores', async (req, res) => {
+  const { razonSocial, ruc, representante, email, telefono, categoria, descripcion, web } = req.body || {};
+
+  if (!razonSocial?.trim() || !representante?.trim() || !email?.trim() ||
+      !telefono?.trim() || !categoria?.trim()) {
+    return res.status(400).json({ mensaje: 'Completa todos los campos obligatorios.' });
+  }
+  if (!/^\d{11}$/.test(ruc?.trim() || '')) {
+    return res.status(400).json({ mensaje: 'El RUC debe tener 11 dígitos.' });
+  }
+  if (!EMAIL_RE.test(email.trim()) || razonSocial.trim().length > 200 ||
+      representante.trim().length > 200 || email.trim().length > 320 ||
+      telefono.trim().length > 30 || categoria.trim().length > 100 ||
+      (descripcion?.trim().length ?? 0) > 4000 || (web?.trim().length ?? 0) > 300) {
+    return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
+
+  try {
+    await pool.query(
+      `INSERT INTO "PROVEEDORES"
+         ("ID","RAZON_SOCIAL","RUC","REPRESENTANTE","EMAIL","TELEFONO","CATEGORIA","DESCRIPCION","WEB")
+       VALUES (nextval('"SEQ_PROVEEDORES"'), $1, $2, $3, $4, $5, $6, $7, $8)`,
+      [razonSocial.trim(), ruc.trim(), representante.trim(), email.trim(),
+       telefono.trim(), categoria.trim(), descripcion?.trim() || null, web?.trim() || null]
+    );
+    res.json({ mensaje: 'Solicitud recibida. Nos pondremos en contacto en los próximos 3 días hábiles.' });
+  } catch (err) {
+    console.error('proveedores:', err);
+    res.status(500).json({ mensaje: 'Error interno al guardar la solicitud.' });
+  }
+});
+
+// GET /api/proveedores — lista para uso administrativo
+app.get('/api/proveedores', requireAuth, async (_req, res) => {
+  const q = await pool.query('SELECT * FROM "PROVEEDORES" ORDER BY "FECHA_SOLICITUD" DESC');
+  res.json(q.rows.map(r => ({
+    id: Number(r.ID), razonSocial: r.RAZON_SOCIAL, ruc: r.RUC, representante: r.REPRESENTANTE,
+    email: r.EMAIL, telefono: r.TELEFONO, categoria: r.CATEGORIA, descripcion: r.DESCRIPCION,
+    web: r.WEB, fechaSolicitud: r.FECHA_SOLICITUD, estado: r.ESTADO
+  })));
 });
 
 // ═════════════════════════ CLIENTES (CRUD, requiere JWT) ═════════════════════════
@@ -294,7 +378,15 @@ app.delete('/api/clientes/:id(\\d+)', requireAuth, async (req, res) => {
 
 // ═════════════════════════ FRONTEND ═════════════════════════
 // extensions: ['html'] → /login sirve login.html, /contacto sirve contacto.html, etc.
-app.use(express.static(path.join(__dirname, 'public'), { extensions: ['html'] }));
+// Los HTML no se cachean (para que los deploys se vean al instante);
+// css/js/imágenes sí, una semana.
+app.use(express.static(path.join(__dirname, 'public'), {
+  extensions: ['html'],
+  maxAge: '7d',
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) res.set('Cache-Control', 'no-cache');
+  }
+}));
 
 // Rutas inexistentes → misma página 404 que mostraba el router de Blazor
 app.use((_req, res) => {
