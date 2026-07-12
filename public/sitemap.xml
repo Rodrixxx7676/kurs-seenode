@@ -5,4 +5,5 @@
   <url><loc>https://kurs-seenode.seenode.app/proveedores</loc><priority>0.8</priority></url>
   <url><loc>https://kurs-seenode.seenode.app/registro</loc><priority>0.5</priority></url>
   <url><loc>https://kurs-seenode.seenode.app/login</loc><priority>0.3</priority></url>
+  <url><loc>https://kurs-seenode.seenode.app/privacidad</loc><priority>0.4</priority></url>
 </urlset>

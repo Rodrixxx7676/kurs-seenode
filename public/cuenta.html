@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=7" />
+  <link rel="stylesheet" href="/css/app.css?v=8" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
@@ -187,10 +187,37 @@
           <button class="btn-send" id="cambiarPw"><i class="ti ti-key"></i> Actualizar contraseña</button>
         </div>
       </div>
+
+      <!-- Portabilidad de datos (Política de Privacidad → derechos ARCO) -->
+      <div class="cuenta-card glass-bubble" style="margin-top:20px">
+        <h2>Mis datos personales</h2>
+        <p class="cuenta-parrafo">Descarga una copia de toda tu información guardada en KURS
+        (perfil y proyectos) en formato JSON, como establece nuestra
+        <a href="/privacidad" class="cuenta-enlace">Política de Privacidad</a>.</p>
+        <div class="form-submit" style="justify-content:flex-start">
+          <button class="btn-send" id="descargarDatos"><i class="ti ti-download"></i> Descargar mis datos</button>
+        </div>
+      </div>
+
+      <!-- Zona de peligro -->
+      <div class="cuenta-card glass-bubble zona-peligro" style="margin-top:20px">
+        <h2><i class="ti ti-alert-triangle"></i> Eliminar mi cuenta</h2>
+        <p class="cuenta-parrafo">Tu cuenta se desactivará y no podrás volver a iniciar sesión.
+        Confirma tu contraseña para continuar.</p>
+        <div class="form-group">
+          <div class="input-wrap"><i class="ti ti-lock"></i>
+            <input type="password" id="pwEliminar" placeholder="Tu contraseña actual" />
+          </div>
+        </div>
+        <p class="form-error" id="eliminarError" style="display:none"></p>
+        <div class="form-submit" style="justify-content:flex-start">
+          <button class="btn-send btn-peligro" id="eliminarCuenta"><i class="ti ti-trash"></i> Eliminar mi cuenta</button>
+        </div>
+      </div>
     </section>
 
   </div>
 
-  <script src="/js/kurs.js?v=7"></script>
+  <script src="/js/kurs.js?v=8"></script>
 </body>
 </html>

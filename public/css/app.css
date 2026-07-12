@@ -1475,3 +1475,58 @@ html { scroll-behavior: smooth; }
 @media (max-width: 600px) {
   .wsp-flotante { width: 52px; height: 52px; font-size: 27px; bottom: 16px; right: 16px; }
 }
+
+/* ═══════════ POLÍTICA DE PRIVACIDAD ═══════════ */
+.legal-wrap {
+  position: relative; z-index: 1;
+  max-width: 820px; margin: 0 auto;
+  padding: 140px 24px 80px;
+}
+.legal-header { text-align: center; margin-bottom: 36px; }
+.legal-header h1 { font-family: var(--font-display); font-size: clamp(28px, 5vw, 44px); font-weight: 800; margin-top: 18px; }
+.legal-fecha { color: rgba(255,255,255,0.4); font-size: 13px; margin-top: 10px; }
+
+.legal-card { padding: 40px 44px; border-radius: var(--radius-xl); }
+.legal-card section { margin-bottom: 32px; }
+.legal-card section:last-child { margin-bottom: 0; }
+.legal-card h2 {
+  font-family: var(--font-display); font-size: 16px; font-weight: 700;
+  letter-spacing: 0.05em; text-transform: uppercase;
+  margin-bottom: 12px; color: var(--white);
+}
+.legal-card p, .legal-card li {
+  font-size: 14.5px; line-height: 1.7; color: rgba(255,255,255,0.72);
+}
+.legal-card p { margin-bottom: 10px; }
+.legal-card ul { padding-left: 22px; margin-bottom: 10px; }
+.legal-card li { margin-bottom: 8px; }
+.legal-card a { color: var(--white); text-decoration: underline; text-underline-offset: 3px; }
+.legal-card strong { color: rgba(255,255,255,0.92); }
+.legal-card code {
+  background: rgba(255,255,255,0.08); border-radius: 6px;
+  padding: 2px 7px; font-size: 13px;
+}
+@media (max-width: 600px) { .legal-card { padding: 28px 22px; } }
+
+/* Enlace legal del footer y nota del registro */
+.footer-legal-link { color: rgba(255,255,255,0.55); text-decoration: underline; text-underline-offset: 3px; }
+.footer-legal-link:hover { color: var(--white); }
+.registro-legal { font-size: 12px; color: rgba(255,255,255,0.4); text-align: center; margin-top: 12px; }
+.registro-legal a { color: rgba(255,255,255,0.65); }
+
+/* ═══════════ CUENTA: datos personales y zona de peligro ═══════════ */
+.cuenta-parrafo { font-size: 14px; color: rgba(255,255,255,0.65); line-height: 1.6; margin-bottom: 18px; }
+.cuenta-enlace { color: var(--white); }
+
+.zona-peligro { border: 1px solid rgba(248,113,113,0.25); }
+.zona-peligro > h2 { color: #fca5a5; display: flex; align-items: center; gap: 8px; }
+.btn-peligro {
+  background: rgba(248,113,113,0.15) !important;
+  color: #fca5a5 !important;
+  border: 1px solid rgba(248,113,113,0.3) !important;
+}
+.btn-peligro:hover { background: rgba(248,113,113,0.25) !important; }
+
+/* Cancelar solicitud de proyecto */
+.proyecto-cancelar { color: #fca5a5; text-decoration: underline; text-underline-offset: 3px; }
+.proyecto-cancelar:hover { color: #f87171; }

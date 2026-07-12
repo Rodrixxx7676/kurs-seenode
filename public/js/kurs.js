@@ -649,15 +649,68 @@
             '<p class="proyecto-tipo"><i class="ti ti-category"></i> ' + escapar(p.tipo) +
               (p.presupuesto ? ' · <i class="ti ti-coin"></i> ' + escapar(p.presupuesto) : '') + '</p>' +
             '<p class="proyecto-desc">' + escapar(p.descripcion) + '</p>' +
-            '<p class="proyecto-fecha"><i class="ti ti-calendar"></i> Solicitado el ' + fecha + '</p>' +
+            '<p class="proyecto-fecha"><i class="ti ti-calendar"></i> Solicitado el ' + fecha +
+              (p.estado === 'solicitado'
+                ? ' · <a href="#" class="proyecto-cancelar" data-cancelar="' + p.id + '">Cancelar solicitud</a>'
+                : '') + '</p>' +
           '</div>';
         }).join('');
+
+        listaEl.querySelectorAll('[data-cancelar]').forEach(function (enlace) {
+          enlace.addEventListener('click', async function (e) {
+            e.preventDefault();
+            if (!window.confirm('¿Seguro que quieres cancelar esta solicitud?')) return;
+            try {
+              await api('/api/cuenta/proyectos/' + enlace.dataset.cancelar + '/cancelar', { method: 'PUT' });
+              cargarProyectos();
+            } catch {}
+          });
+        });
       }).catch(function () {});
     }
     function escapar(s) {
       const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
     }
     cargarProyectos();
+
+    // ── Descargar mis datos (portabilidad) ──
+    $('descargarDatos').addEventListener('click', async function () {
+      try {
+        const resp = await api('/api/cuenta/datos');
+        const blob = await resp.blob();
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'kurs-mis-datos.json';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+      } catch {}
+    });
+
+    // ── Eliminar cuenta (con confirmación de contraseña) ──
+    const eliminarBtn = $('eliminarCuenta');
+    const eliminarHtml = eliminarBtn.innerHTML;
+    eliminarBtn.addEventListener('click', async function () {
+      const err = $('eliminarError');
+      err.style.display = 'none';
+      const password = $('pwEliminar').value;
+      if (!password) { err.textContent = 'Ingresa tu contraseña para confirmar.'; err.style.display = ''; return; }
+      if (!window.confirm('Esta acción desactivará tu cuenta y cerrará tu sesión. ¿Continuar?')) return;
+
+      setCargando(eliminarBtn, true, 'Eliminando...', eliminarHtml);
+      try {
+        const resp = await api('/api/cuenta', {
+          method: 'DELETE',
+          body: JSON.stringify({ password: password })
+        });
+        const data = await resp.json();
+        if (resp.ok) { cerrarSesion(true); return; }
+        err.textContent = data.mensaje; err.style.display = '';
+      } catch { err.textContent = 'No se pudo conectar con el servidor.'; err.style.display = ''; }
+      finally { setCargando(eliminarBtn, false, '', eliminarHtml); }
+    });
 
     // ── Proyectos: mostrar/ocultar formulario ──
     const proyForm = $('proyectoForm');

@@ -176,15 +176,69 @@ app.use(compression());
 app.use(express.json({ limit: '32kb' }));
 
 // ── Cabeceras de seguridad ───────────────────────────────────────────────────
+// CSP: solo se permiten los orígenes que el sitio realmente usa
+// (Google Fonts, íconos de jsdelivr y reCAPTCHA).
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' https://www.google.com https://www.gstatic.com",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net",
+  "font-src 'self' https://fonts.gstatic.com https://cdn.jsdelivr.net",
+  "img-src 'self' data:",
+  "connect-src 'self' https://www.google.com",
+  "frame-src https://www.google.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'"
+].join('; ');
+
 app.use((_req, res, next) => {
   res.set({
+    'Content-Security-Policy': CSP,
+    'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
     'X-Content-Type-Options': 'nosniff',
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+    'Cross-Origin-Opener-Policy': 'same-origin'
   });
   next();
 });
+
+// ── Rate limiting ────────────────────────────────────────────────────────────
+// Límite general de API + límites estrictos en endpoints sensibles.
+function crearLimitador(max, ventanaMs, mensaje) {
+  const porIp = new Map();
+  setInterval(function limpiar() {
+    const ahora = Date.now();
+    porIp.forEach((arr, ip) => {
+      const vivos = arr.filter(t => ahora - t < ventanaMs);
+      if (vivos.length) porIp.set(ip, vivos); else porIp.delete(ip);
+    });
+  }, 10 * 60_000).unref();
+
+  return (req, res, next) => {
+    const ahora = Date.now();
+    const arr = (porIp.get(req.ip) || []).filter(t => ahora - t < ventanaMs);
+    if (arr.length >= max) {
+      return res.status(429).json({ mensaje: mensaje || 'Demasiadas peticiones. Intenta en un momento.' });
+    }
+    arr.push(ahora);
+    porIp.set(req.ip, arr);
+    next();
+  };
+}
+app.use('/api/', crearLimitador(120, 60_000));                       // general: 120/min por IP
+const limiteRegistro = crearLimitador(5, 60_000,
+  'Demasiados registros desde esta conexión. Espera un minuto.');    // anti-creación masiva
+
+// ── Política de contraseñas (misma que valida el frontend) ──────────────────
+function passwordFuerte(p) {
+  return typeof p === 'string' && p.length >= 7 && p.length <= 100 &&
+         /[A-Z]/.test(p) && /\d/.test(p) &&
+         /[!@#$%^&*()_+\-=\[\]{}|;':",.\/<>?]/.test(p);
+}
+const MSG_PASSWORD = 'La contraseña debe tener mínimo 7 caracteres, una mayúscula, un número y un carácter especial.';
 
 // ── Diagnóstico rápido: GET /api/salud ──────────────────────────────────────
 let dbLista = false;
@@ -200,14 +254,17 @@ app.get('/api/config', (_req, res) => {
 // ═════════════════════════ AUTH ═════════════════════════
 
 // POST /api/auth/registro
-app.post('/api/auth/registro', async (req, res) => {
+app.post('/api/auth/registro', limiteRegistro, async (req, res) => {
   const { nombre, email, password, empresa } = req.body || {};
   if (!nombre?.trim() || !email?.trim() || !password) {
     return res.status(400).json({ mensaje: 'Nombre, correo y contraseña son obligatorios.' });
   }
   if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 ||
-      email.trim().length > 320 || (empresa?.trim().length ?? 0) > 200 || password.length > 100) {
+      email.trim().length > 320 || (empresa?.trim().length ?? 0) > 200) {
     return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
+  if (!passwordFuerte(password)) {
+    return res.status(400).json({ mensaje: MSG_PASSWORD });
   }
   if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
     return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
@@ -364,19 +421,58 @@ app.put('/api/cuenta', requireAuth, async (req, res) => {
 app.put('/api/cuenta/password', requireAuth, async (req, res) => {
   const { actual, nueva } = req.body || {};
   if (!actual || !nueva) return res.status(400).json({ mensaje: 'Debes indicar la contraseña actual y la nueva.' });
-  if (nueva.length < 7 || nueva.length > 100) {
-    return res.status(400).json({ mensaje: 'La nueva contraseña debe tener entre 7 y 100 caracteres.' });
+  if (!passwordFuerte(nueva)) {
+    return res.status(400).json({ mensaje: MSG_PASSWORD });
   }
 
   const q = await pool.query('SELECT "PASSWORD_HASH" FROM "CLIENTES" WHERE "ID" = $1', [req.user.sub]);
   const hash = q.rows[0]?.PASSWORD_HASH;
   if (!hash || !bcrypt.compareSync(actual, hash)) {
-    return res.status(401).json({ mensaje: 'La contraseña actual no es correcta.' });
+    return res.status(400).json({ mensaje: 'La contraseña actual no es correcta.' });
   }
 
   await pool.query('UPDATE "CLIENTES" SET "PASSWORD_HASH" = $1 WHERE "ID" = $2',
     [bcrypt.hashSync(nueva, 11), req.user.sub]);
   res.json({ mensaje: 'Contraseña actualizada correctamente.' });
+});
+
+// GET /api/cuenta/datos — descarga de todos los datos del usuario (portabilidad)
+app.get('/api/cuenta/datos', requireAuth, async (req, res) => {
+  const perfil = await pool.query(
+    'SELECT "NOMBRE","EMAIL","EMPRESA","TELEFONO","FECHA_REGISTRO","NIVEL" FROM "CLIENTES" WHERE "ID" = $1',
+    [req.user.sub]);
+  if (perfil.rowCount === 0) return res.status(404).json({ mensaje: 'Cuenta no encontrada.' });
+
+  const proyectos = await pool.query(
+    'SELECT "TITULO","TIPO","DESCRIPCION","PRESUPUESTO","ESTADO","FECHA_SOLICITUD" FROM "PROYECTOS" WHERE "CLIENTE_ID" = $1 ORDER BY "FECHA_SOLICITUD"',
+    [req.user.sub]);
+
+  const p = perfil.rows[0];
+  res.set('Content-Disposition', 'attachment; filename="kurs-mis-datos.json"');
+  res.json({
+    exportadoEl: new Date().toISOString(),
+    perfil: { nombre: p.NOMBRE, email: p.EMAIL, empresa: p.EMPRESA, telefono: p.TELEFONO,
+              fechaRegistro: p.FECHA_REGISTRO, nivel: p.NIVEL },
+    proyectos: proyectos.rows.map(r => ({
+      titulo: r.TITULO, tipo: r.TIPO, descripcion: r.DESCRIPCION,
+      presupuesto: r.PRESUPUESTO, estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD
+    }))
+  });
+});
+
+// DELETE /api/cuenta — desactiva la cuenta (requiere confirmar la contraseña)
+app.delete('/api/cuenta', requireAuth, async (req, res) => {
+  const { password } = req.body || {};
+  if (!password) return res.status(400).json({ mensaje: 'Debes confirmar tu contraseña.' });
+
+  const q = await pool.query('SELECT "PASSWORD_HASH" FROM "CLIENTES" WHERE "ID" = $1', [req.user.sub]);
+  const hash = q.rows[0]?.PASSWORD_HASH;
+  if (!hash || !bcrypt.compareSync(password, hash)) {
+    return res.status(400).json({ mensaje: 'La contraseña no es correcta.' });
+  }
+
+  await pool.query('UPDATE "CLIENTES" SET "ACTIVO" = false WHERE "ID" = $1', [req.user.sub]);
+  res.json({ mensaje: 'Tu cuenta fue eliminada. Gracias por habernos acompañado.' });
 });
 
 // GET /api/cuenta/proyectos — proyectos solicitados por el usuario
@@ -405,6 +501,18 @@ app.post('/api/cuenta/proyectos', requireAuth, async (req, res) => {
      VALUES (nextval('"SEQ_PROYECTOS"'), $1, $2, $3, $4, $5) RETURNING "ID"`,
     [req.user.sub, titulo.trim(), tipo.trim(), descripcion.trim(), presupuesto?.trim() || null]);
   res.json({ mensaje: '¡Proyecto solicitado! Te contactaremos pronto.', id: Number(ins.rows[0].ID) });
+});
+
+// PUT /api/cuenta/proyectos/:id/cancelar — solo proyectos propios aún no iniciados
+app.put('/api/cuenta/proyectos/:id(\\d+)/cancelar', requireAuth, async (req, res) => {
+  const q = await pool.query(
+    `UPDATE "PROYECTOS" SET "ESTADO" = 'cancelado'
+     WHERE "ID" = $1 AND "CLIENTE_ID" = $2 AND "ESTADO" = 'solicitado'`,
+    [req.params.id, req.user.sub]);
+  if (q.rowCount === 0) {
+    return res.status(400).json({ mensaje: 'Solo puedes cancelar solicitudes que aún no hemos iniciado.' });
+  }
+  res.json({ mensaje: 'Solicitud cancelada.' });
 });
 
 // ═════════════════════════ PROVEEDORES ═════════════════════════
