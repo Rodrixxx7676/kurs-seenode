@@ -88,12 +88,15 @@
     document.getElementById('cookieReject').addEventListener('click', function () { decidir('rejected'); });
   }
 
-  // ── Contadores animados (port del timer de PagePrincipal.cs) ─────────────
+  // ── Contadores animados: arrancan cuando la sección entra en pantalla ─────
   const statNumbers = document.querySelectorAll('.stat-number[data-target]');
   if (statNumbers.length) {
-    const TOTAL_STEPS = 80, FRAME_MS = 18, START_DELAY = 600;
-    let step = 0;
-    setTimeout(function () {
+    let animado = false;
+    function animarContadores() {
+      if (animado) return;
+      animado = true;
+      const TOTAL_STEPS = 80, FRAME_MS = 18;
+      let step = 0;
       const timer = setInterval(function () {
         step++;
         const t = step / TOTAL_STEPS;
@@ -103,7 +106,32 @@
         });
         if (step >= TOTAL_STEPS) clearInterval(timer);
       }, FRAME_MS);
-    }, START_DELAY);
+    }
+
+    if ('IntersectionObserver' in window) {
+      const obs = new IntersectionObserver(function (entradas) {
+        if (entradas.some(function (e) { return e.isIntersecting; })) {
+          animarContadores();
+          obs.disconnect();
+        }
+      }, { threshold: 0.3 });
+      obs.observe(document.querySelector('.stats'));
+    } else {
+      setTimeout(animarContadores, 600);   // navegadores antiguos
+    }
+  }
+
+  // ── Botón flotante de WhatsApp (en todo el sitio salvo el panel admin) ────
+  if (!document.querySelector('.admin-wrap')) {
+    const wsp = document.createElement('a');
+    wsp.href = 'https://wa.me/51949238917?text=' +
+      encodeURIComponent('¡Hola KURS! Quiero información sobre sus servicios.');
+    wsp.className = 'wsp-flotante';
+    wsp.target = '_blank';
+    wsp.rel = 'noopener';
+    wsp.setAttribute('aria-label', 'Escríbenos por WhatsApp');
+    wsp.innerHTML = '<i class="ti ti-brand-whatsapp"></i>';
+    document.body.appendChild(wsp);
   }
 
   // ── Mostrar/ocultar contraseña ────────────────────────────────────────────
@@ -149,6 +177,14 @@
       localStorage.removeItem(k);
     });
     if (recargar) window.location.href = '/';
+  }
+
+  function guardarSesion(data) {
+    localStorage.setItem('kurs_token', data.token);
+    localStorage.setItem('kurs_expira', data.expira);
+    localStorage.setItem('kurs_user',
+      JSON.stringify({ nombre: data.nombre, email: data.email, nivel: data.nivel }));
+    localStorage.setItem('kurs_actividad', Date.now().toString());
   }
 
   // Navbar según sesión: saluda al usuario, enlaza a "Mi cuenta" y ofrece cerrar sesión
@@ -265,11 +301,8 @@
 
         if (resp.ok) {
           const data = await resp.json();
-          localStorage.setItem('kurs_token', data.token);
-          localStorage.setItem('kurs_expira', data.expira);
-          localStorage.setItem('kurs_user',
-            JSON.stringify({ nombre: data.nombre, email: data.email, nivel: data.nivel }));
-          window.location.href = '/';
+          guardarSesion(data);
+          window.location.href = '/cuenta';
           return;
         }
 
@@ -352,6 +385,19 @@
         if (resp.ok) {
           registroBtn.style.display = 'none';
           $('registroOk').style.display = '';
+          // Auto-login: el cliente entra directo a su panel sin reescribir credenciales
+          try {
+            const loginResp = await fetch('/api/auth/login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: email, password: password })
+            });
+            if (loginResp.ok) {
+              guardarSesion(await loginResp.json());
+              setTimeout(function () { window.location.href = '/cuenta'; }, 1200);
+              return;
+            }
+          } catch { /* si falla, cae al login manual */ }
           setTimeout(function () { window.location.href = '/login'; }, 1500);
           return;
         }
