@@ -18,10 +18,26 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=9" />
+  <link rel="stylesheet" href="/css/app.css?v=10" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
+
+  <!-- Pantalla de carga: se oculta sola; si a los 10 s no cargó, ofrece reintentar (CSS puro, funciona aunque el JS no llegue) -->
+  <div class="carga-splash" id="cargaSplash">
+    <div class="carga-indicador">
+      <img src="/images/LogoSinFondo.svg" alt="KURS" class="carga-logo" />
+      <div class="carga-progreso"><span></span></div>
+      <p class="carga-texto">Cargando<span class="carga-puntos"></span></p>
+    </div>
+    <div class="carga-error">
+      <i class="ti ti-plug-connected-x"></i>
+      <p class="carga-error-titulo">Ups, esto está tardando más de lo normal</p>
+      <p class="carga-error-sub">Puede ser tu conexión o un problema momentáneo del servidor.</p>
+      <a href="" class="carga-reintentar"><i class="ti ti-refresh"></i> Reintentar</a>
+    </div>
+  </div>
+  <noscript><style>#cargaSplash{display:none!important}</style></noscript>
 
   <div class="stars-layer" aria-hidden="true"></div>
 
@@ -250,6 +266,6 @@
     <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados. · <a href="/privacidad" class="footer-legal-link">Política de Privacidad</a></p>
   </footer>
 
-  <script src="/js/kurs.js?v=9"></script>
+  <script src="/js/kurs.js?v=10"></script>
 </body>
 </html>

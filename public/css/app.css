@@ -1567,3 +1567,108 @@ html { scroll-behavior: smooth; }
 .admin-nota textarea:focus { border-color: rgba(255,255,255,0.3); }
 .admin-nota textarea::placeholder { color: rgba(255,255,255,0.25); }
 @media (max-width: 600px) { .admin-nota { flex-direction: column; } .admin-nota button { align-self: flex-end; } }
+
+/* ═══════════ PANTALLA DE CARGA (splash) ═══════════ */
+/* Aparece recién a los 0.3 s: en cargas rápidas nunca llega a verse.
+   A los 10 s, por CSS puro, se cambia al estado de error con Reintentar
+   — funciona incluso si el JavaScript nunca terminó de cargar. */
+.carga-splash {
+  position: fixed; inset: 0; z-index: 9999;
+  background: #060608;
+  display: grid; place-items: center;
+  opacity: 0;
+  animation: carga-aparecer 0.3s ease 0.3s forwards;
+}
+.carga-splash.carga-oculta {
+  transition: opacity 0.4s ease;
+  opacity: 0 !important;
+  pointer-events: none;
+}
+@keyframes carga-aparecer { to { opacity: 1; } }
+
+.carga-indicador {
+  grid-area: 1 / 1;
+  display: flex; flex-direction: column; align-items: center; gap: 24px;
+  animation: carga-esconder 0.4s ease 10s forwards;
+}
+@keyframes carga-esconder { to { opacity: 0; visibility: hidden; } }
+
+.carga-logo { width: 88px; height: 88px; animation: carga-pulso 2s ease-in-out infinite; }
+@keyframes carga-pulso {
+  0%, 100% { transform: scale(1);    opacity: 0.85; }
+  50%      { transform: scale(1.08); opacity: 1; }
+}
+
+.carga-progreso {
+  width: 180px; height: 3px; border-radius: 999px;
+  background: rgba(255,255,255,0.08); overflow: hidden;
+}
+.carga-progreso span {
+  display: block; height: 100%; width: 40%; border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.1), #fff, rgba(255,255,255,0.1));
+  animation: carga-barra 1.2s ease-in-out infinite;
+}
+@keyframes carga-barra {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(340%); }
+}
+
+.carga-texto {
+  font-family: var(--font-display);
+  font-size: 11px; letter-spacing: 0.35em; text-transform: uppercase;
+  color: rgba(255,255,255,0.5);
+}
+.carga-puntos::after { content: ''; animation: carga-puntos 1.6s steps(4) infinite; }
+@keyframes carga-puntos {
+  0% { content: ''; } 25% { content: '.'; } 50% { content: '..'; } 75% { content: '...'; }
+}
+
+/* Estado de error (visible a los 10 s) */
+.carga-error {
+  grid-area: 1 / 1;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  text-align: center; padding: 0 28px;
+  opacity: 0; visibility: hidden;
+  animation: carga-mostrar 0.5s ease 10.2s forwards;
+}
+@keyframes carga-mostrar { to { opacity: 1; visibility: visible; } }
+
+.carga-error > i { font-size: 44px; color: rgba(255,255,255,0.45); margin-bottom: 6px; }
+.carga-error-titulo {
+  font-family: var(--font-display);
+  font-size: 15px; font-weight: 700; letter-spacing: 0.04em; color: #fff;
+}
+.carga-error-sub { font-size: 13.5px; color: rgba(255,255,255,0.55); max-width: 340px; }
+.carga-reintentar {
+  margin-top: 14px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 13px 32px; border-radius: 999px;
+  background: #fff; color: #000;
+  font-family: var(--font-display);
+  font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  text-decoration: none;
+  transition: transform 0.15s ease;
+}
+.carga-reintentar:hover { transform: scale(1.05); }
+.carga-reintentar i { font-size: 15px; }
+
+/* ═══════════ ESTADOS DE CARGA/ERROR EN PANELES DE DATOS ═══════════ */
+.datos-cargando {
+  display: flex; align-items: center; justify-content: center; gap: 12px;
+  padding: 36px 20px; color: rgba(255,255,255,0.45); font-size: 14px;
+}
+.mini-spinner {
+  width: 18px; height: 18px; border-radius: 50%;
+  border: 2px solid rgba(255,255,255,0.15);
+  border-top-color: rgba(255,255,255,0.7);
+  animation: mini-girar 0.8s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes mini-girar { to { transform: rotate(360deg); } }
+
+.datos-error {
+  display: flex; flex-direction: column; align-items: center; gap: 10px;
+  padding: 36px 20px; text-align: center;
+}
+.datos-error i { font-size: 36px; color: rgba(255,255,255,0.4); }
+.datos-error p { font-size: 14px; color: rgba(255,255,255,0.55); }

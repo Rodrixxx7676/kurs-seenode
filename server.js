@@ -167,7 +167,11 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 // Hash de relleno: se compara cuando el correo no existe, para que el login
 // tarde lo mismo exista o no la cuenta (evita enumeración de correos).
-const HASH_RELLENO = bcrypt.hashSync(crypto.randomUUID(), 11);
+// Se calcula en segundo plano para no retrasar el arranque del servidor.
+let HASH_RELLENO = null;
+bcrypt.hash(crypto.randomUUID(), 11, function (err, h) {
+  if (!err) HASH_RELLENO = h;
+});
 
 // ── reCAPTCHA v3 ─────────────────────────────────────────────────────────────
 // La clave de sitio es pública (va al navegador); la secreta va por env.
@@ -340,7 +344,8 @@ app.post('/api/auth/login', rateLimitLogin, async (req, res) => {
     // Mensaje genérico y comparación SIEMPRE contra un hash (real o de relleno)
     // → el tiempo de respuesta no revela si el correo existe.
     const hashComparar = cliente?.PASSWORD_HASH || HASH_RELLENO;
-    const passwordOk = bcrypt.compareSync(password, hashComparar) && !!cliente?.PASSWORD_HASH;
+    const passwordOk = !!hashComparar && bcrypt.compareSync(password, hashComparar) &&
+                       !!cliente?.PASSWORD_HASH;
     if (!passwordOk) {
       const fallos = (estado?.fallos || 0) + 1;
       fallosPorEmail.set(emailNorm, {

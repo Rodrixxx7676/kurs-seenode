@@ -5,6 +5,25 @@
 (function () {
   'use strict';
 
+  // ── Pantalla de carga ──────────────────────────────────────────────────────
+  // Se oculta cuando la página terminó de cargar. El estado de error a los
+  // 10 s vive en CSS puro (por si este archivo nunca llegara a ejecutarse).
+  const splash = document.getElementById('cargaSplash');
+  if (splash) {
+    const ocultarSplash = function () {
+      splash.classList.add('carga-oculta');
+      setTimeout(function () { splash.remove(); }, 500);
+    };
+    if (document.readyState === 'complete') {
+      ocultarSplash();
+    } else {
+      window.addEventListener('load', ocultarSplash);
+      // red de seguridad: si un recurso externo (fuente, ícono) se demora,
+      // no retener al usuario — el DOM ya está listo a esta altura
+      setTimeout(ocultarSplash, 8000);
+    }
+  }
+
   // ── reCAPTCHA v3 ────────────────────────────────────────────────────────────
   // Carga el script de Google solo si hay clave configurada en el servidor.
   let recaptchaSiteKey = null;
@@ -156,6 +175,17 @@
         if (e.key === 'Enter') { e.preventDefault(); btn.click(); }
       });
     });
+  }
+
+  // ── Estados de carga y error para paneles de datos ────────────────────────
+  function estadoCargando(el) {
+    el.innerHTML = '<div class="datos-cargando"><span class="mini-spinner"></span> Cargando...</div>';
+  }
+  function estadoError(el, reintentar) {
+    el.innerHTML = '<div class="datos-error"><i class="ti ti-plug-connected-x"></i>' +
+      '<p>Ups, no pudimos cargar esta información.</p>' +
+      '<button class="btn-send cuenta-btn-sm"><i class="ti ti-refresh"></i> Reintentar</button></div>';
+    el.querySelector('button').addEventListener('click', reintentar);
   }
 
   // ── Sesión de usuario ────────────────────────────────────────────────────
@@ -537,6 +567,10 @@
       opciones.headers = Object.assign(
         { 'Content-Type': 'application/json' },   // la sesión viaja en la cookie httpOnly
         opciones.headers || {});
+      // máximo 10 s de espera: si el servidor no responde, se muestra el error
+      if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        opciones.signal = AbortSignal.timeout(10_000);
+      }
       const resp = await fetch(url, opciones);
       if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
       return resp;
@@ -648,6 +682,7 @@
       cancelado:   { txt: 'Cancelado',   clase: 'estado-cancelado' }
     };
     function cargarProyectos() {
+      estadoCargando(listaEl);
       api('/api/cuenta/proyectos').then(function (r) { return r.json(); }).then(function (proyectos) {
         if (!proyectos.length) {
           listaEl.innerHTML = '<div class="proyectos-vacio"><i class="ti ti-rocket"></i>' +
@@ -686,7 +721,7 @@
             } catch {}
           });
         });
-      }).catch(function () {});
+      }).catch(function () { estadoError(listaEl, cargarProyectos); });
     }
     function escapar(s) {
       const d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML;
@@ -783,6 +818,10 @@
       opciones.headers = Object.assign(
         { 'Content-Type': 'application/json' },   // la sesión viaja en la cookie httpOnly
         opciones.headers || {});
+      // máximo 10 s de espera: si el servidor no responde, se muestra el error
+      if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+        opciones.signal = AbortSignal.timeout(10_000);
+      }
       const resp = await fetch(url, opciones);
       if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
       if (resp.status === 403) { window.location.href = '/cuenta'; throw new Error('sin permiso'); }
@@ -826,6 +865,7 @@
     const ETIQ_PROY = { solicitado: 'Solicitado', en_progreso: 'En progreso', entregado: 'Entregado', cancelado: 'Cancelado' };
     const CLASE_PROY = { solicitado: 'estado-solicitado', en_progreso: 'estado-progreso', entregado: 'estado-entregado', cancelado: 'estado-cancelado' };
     function cargarAdminProyectos() {
+      estadoCargando($('adminProyectos'));
       api('/api/admin/proyectos').then(function (r) { return r.json(); }).then(function (lista) {
         if (!lista.length) { $('adminProyectos').innerHTML = vacio('No hay proyectos solicitados.'); return; }
         $('adminProyectos').innerHTML = lista.map(function (p) {
@@ -864,11 +904,12 @@
             } catch { btn.disabled = false; }
           });
         });
-      }).catch(function () {});
+      }).catch(function () { estadoError($('adminProyectos'), cargarAdminProyectos); });
     }
 
     // ── Mensajes ──
     function cargarAdminMensajes() {
+      estadoCargando($('adminMensajes'));
       api('/api/contacto').then(function (r) { return r.json(); }).then(function (lista) {
         if (!lista.length) { $('adminMensajes').innerHTML = vacio('No hay mensajes.'); return; }
         $('adminMensajes').innerHTML = lista.map(function (m) {
@@ -890,7 +931,7 @@
             try { await api('/api/contacto/' + b.dataset.leido + '/leido', { method: 'PUT' }); cargarAdminMensajes(); cargarResumen(); } catch {}
           });
         });
-      }).catch(function () {});
+      }).catch(function () { estadoError($('adminMensajes'), cargarAdminMensajes); });
     }
 
     // ── Proveedores ──
@@ -898,6 +939,7 @@
     const ETIQ_PROV = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
     const CLASE_PROV = { pendiente: 'estado-solicitado', aprobado: 'estado-entregado', rechazado: 'estado-cancelado' };
     function cargarAdminProveedores() {
+      estadoCargando($('adminProveedores'));
       api('/api/proveedores').then(function (r) { return r.json(); }).then(function (lista) {
         if (!lista.length) { $('adminProveedores').innerHTML = vacio('No hay solicitudes de proveedores.'); return; }
         $('adminProveedores').innerHTML = lista.map(function (p) {
@@ -916,11 +958,12 @@
           '</div>';
         }).join('');
         conectarSelects('prov', '/api/admin/proveedores/', cargarAdminProveedores);
-      }).catch(function () {});
+      }).catch(function () { estadoError($('adminProveedores'), cargarAdminProveedores); });
     }
 
     // ── Clientes ──
     function cargarAdminClientes() {
+      estadoCargando($('adminClientes'));
       api('/api/clientes').then(function (r) { return r.json(); }).then(function (lista) {
         if (!lista.length) { $('adminClientes').innerHTML = vacio('No hay clientes.'); return; }
         const NIVELES = { 1: 'Visitante', 2: 'Cliente', 3: 'Colaborador', 4: 'Administrador' };
@@ -934,7 +977,7 @@
             '<p class="admin-item-meta"><i class="ti ti-calendar"></i> Registrado el ' + fecha(c.fechaRegistro) + '</p>' +
           '</div>';
         }).join('');
-      }).catch(function () {});
+      }).catch(function () { estadoError($('adminClientes'), cargarAdminClientes); });
     }
 
     // Helpers de renderizado compartidos
