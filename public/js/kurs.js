@@ -158,10 +158,12 @@
     });
   }
 
-  // ── Sesión de usuario (mismas reglas que AuthService: expiración + 30 min inactividad) ──
+  // ── Sesión de usuario ────────────────────────────────────────────────────
+  // El token vive en una cookie httpOnly (invisible para JavaScript);
+  // localStorage solo guarda datos de UI: nombre, expiración y actividad.
   function sesionActiva() {
-    const token = localStorage.getItem('kurs_token');
-    if (!token) return null;
+    const usuario = localStorage.getItem('kurs_user');
+    if (!usuario) return null;
 
     const expira = localStorage.getItem('kurs_expira');
     if (expira && Date.now() >= Date.parse(expira)) { cerrarSesion(false); return null; }
@@ -169,22 +171,25 @@
     const act = parseInt(localStorage.getItem('kurs_actividad') || '0', 10);
     if (act && Date.now() - act > 30 * 60_000) { cerrarSesion(false); return null; }
 
-    try { return JSON.parse(localStorage.getItem('kurs_user')); } catch { return null; }
+    try { return JSON.parse(usuario); } catch { return null; }
   }
 
   function cerrarSesion(recargar) {
-    ['kurs_token', 'kurs_user', 'kurs_expira', 'kurs_actividad'].forEach(function (k) {
+    // borra la cookie httpOnly en el servidor (fire-and-forget)
+    fetch('/api/auth/logout', { method: 'POST' }).catch(function () {});
+    ['kurs_token', 'kurs_user', 'kurs_expira', 'kurs_actividad', 'kurs_ultimo'].forEach(function (k) {
       localStorage.removeItem(k);
     });
     if (recargar) window.location.href = '/';
   }
 
   function guardarSesion(data) {
-    localStorage.setItem('kurs_token', data.token);
     localStorage.setItem('kurs_expira', data.expira);
     localStorage.setItem('kurs_user',
       JSON.stringify({ nombre: data.nombre, email: data.email, nivel: data.nivel }));
     localStorage.setItem('kurs_actividad', Date.now().toString());
+    if (data.ultimoAcceso) localStorage.setItem('kurs_ultimo', data.ultimoAcceso);
+    else localStorage.removeItem('kurs_ultimo');
   }
 
   // Navbar según sesión: saluda al usuario, enlaza a "Mi cuenta" y ofrece cerrar sesión
@@ -221,7 +226,7 @@
 
     setInterval(function () {
       const act = parseInt(localStorage.getItem('kurs_actividad') || '0', 10);
-      if (!localStorage.getItem('kurs_token')) return;
+      if (!localStorage.getItem('kurs_user')) return;
       const inactivo = Date.now() - act;
 
       if (inactivo >= INACTIVO_MS) { cerrarSesion(true); return; }
@@ -526,12 +531,11 @@
     const usuario = sesionActiva();
     if (!usuario) { window.location.href = '/login'; return; }
 
-    const token = localStorage.getItem('kurs_token');
     // fetch autenticado; si el token caducó (401) cierra sesión
     async function api(url, opciones) {
       opciones = opciones || {};
       opciones.headers = Object.assign(
-        { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        { 'Content-Type': 'application/json' },   // la sesión viaja en la cookie httpOnly
         opciones.headers || {});
       const resp = await fetch(url, opciones);
       if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
@@ -561,6 +565,18 @@
       $('perfEmpresa').value = c.empresa || '';
       $('perfTelefono').value = c.telefono || '';
       $('perfEmail').value = c.email || '';
+
+      // Avatar con iniciales del nombre
+      const iniciales = c.nombre.trim().split(/\s+/).slice(0, 2)
+        .map(function (p) { return p[0]; }).join('').toUpperCase();
+      document.querySelector('.cuenta-avatar').innerHTML = '<span>' + iniciales + '</span>';
+
+      // Cliente desde + último acceso (seguridad visible para el usuario)
+      const desde = new Date(c.fechaRegistro).toLocaleDateString('es-PE', { month: 'long', year: 'numeric' });
+      const ultimo = localStorage.getItem('kurs_ultimo');
+      $('cuentaMeta').textContent = 'Cliente desde ' + desde +
+        (ultimo ? ' · Último acceso: ' + new Date(ultimo).toLocaleString('es-PE',
+          { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '');
     }).catch(function () {});
 
     // ── Guardar perfil ──
@@ -649,6 +665,10 @@
             '<p class="proyecto-tipo"><i class="ti ti-category"></i> ' + escapar(p.tipo) +
               (p.presupuesto ? ' · <i class="ti ti-coin"></i> ' + escapar(p.presupuesto) : '') + '</p>' +
             '<p class="proyecto-desc">' + escapar(p.descripcion) + '</p>' +
+            (p.notaAdmin
+              ? '<div class="proyecto-nota"><i class="ti ti-message-2"></i>' +
+                '<div><strong>Nota del equipo KURS</strong><p>' + escapar(p.notaAdmin) + '</p></div></div>'
+              : '') +
             '<p class="proyecto-fecha"><i class="ti ti-calendar"></i> Solicitado el ' + fecha +
               (p.estado === 'solicitado'
                 ? ' · <a href="#" class="proyecto-cancelar" data-cancelar="' + p.id + '">Cancelar solicitud</a>'
@@ -758,11 +778,10 @@
     if (!usuario) { window.location.href = '/login'; return; }
     if (parseInt(usuario.nivel, 10) < 4) { window.location.href = '/cuenta'; return; }
 
-    const token = localStorage.getItem('kurs_token');
     async function api(url, opciones) {
       opciones = opciones || {};
       opciones.headers = Object.assign(
-        { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        { 'Content-Type': 'application/json' },   // la sesión viaja en la cookie httpOnly
         opciones.headers || {});
       const resp = await fetch(url, opciones);
       if (resp.status === 401) { cerrarSesion(true); throw new Error('sesión expirada'); }
@@ -821,9 +840,30 @@
             '<div class="admin-item-acciones">' +
               '<label>Estado:</label>' +
               selectEstado('proy', p.id, p.estado, ESTADOS_PROY, ETIQ_PROY) +
+            '</div>' +
+            '<div class="admin-nota">' +
+              '<textarea data-nota="' + p.id + '" maxlength="1000" rows="2" ' +
+                'placeholder="Nota para el cliente (la verá en su cuenta)...">' + esc(p.notaAdmin || '') + '</textarea>' +
+              '<button class="btn-send cuenta-btn-sm" data-guardarnota="' + p.id + '">' +
+                '<i class="ti ti-message-2"></i> Guardar nota</button>' +
             '</div></div>';
         }).join('');
         conectarSelects('proy', '/api/admin/proyectos/', cargarAdminProyectos);
+
+        document.querySelectorAll('[data-guardarnota]').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            const area = document.querySelector('textarea[data-nota="' + btn.dataset.guardarnota + '"]');
+            btn.disabled = true;
+            const original = btn.innerHTML;
+            try {
+              await api('/api/admin/proyectos/' + btn.dataset.guardarnota + '/nota', {
+                method: 'PUT', body: JSON.stringify({ nota: area.value })
+              });
+              btn.innerHTML = '<i class="ti ti-check"></i> Guardada';
+              setTimeout(function () { btn.innerHTML = original; btn.disabled = false; }, 1500);
+            } catch { btn.disabled = false; }
+          });
+        });
       }).catch(function () {});
     }
 

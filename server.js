@@ -87,6 +87,9 @@ async function initSchema() {
       "FECHA_SOLICITUD" timestamptz NOT NULL DEFAULT now(),
       "ESTADO"          varchar(20) NOT NULL DEFAULT 'pendiente'
     );
+
+    ALTER TABLE "CLIENTES"  ADD COLUMN IF NOT EXISTS "ULTIMO_ACCESO" timestamptz;
+    ALTER TABLE "PROYECTOS" ADD COLUMN IF NOT EXISTS "NOTA_ADMIN" varchar(1000);
   `);
 }
 
@@ -118,10 +121,28 @@ function rateLimitLogin(req, res, next) {
   next();
 }
 
+// ── Sesión por cookie httpOnly ───────────────────────────────────────────────
+// El JWT viaja en una cookie que JavaScript no puede leer (inmune a robo por
+// XSS). Se acepta también Authorization: Bearer para clientes de API.
+const COOKIE_SESION = 'kurs_sesion';
+
+function leerCookie(req, nombre) {
+  const cabecera = req.headers.cookie;
+  if (!cabecera) return null;
+  for (const par of cabecera.split(';')) {
+    const i = par.indexOf('=');
+    if (i > 0 && par.slice(0, i).trim() === nombre) {
+      return decodeURIComponent(par.slice(i + 1).trim());
+    }
+  }
+  return null;
+}
+
 // ── Middleware de autenticación JWT ──────────────────────────────────────────
 function requireAuth(req, res, next) {
   const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+  const token = leerCookie(req, COOKIE_SESION) ||
+                (header.startsWith('Bearer ') ? header.slice(7) : null);
   if (!token) return res.status(401).json({ mensaje: 'No autorizado.' });
   try {
     req.user = jwt.verify(token, JWT_KEY, { issuer: JWT_ISSUER, audience: JWT_AUDIENCE });
@@ -143,6 +164,10 @@ const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || '')
   .toLowerCase().split(',').map(s => s.trim()).filter(Boolean);
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Hash de relleno: se compara cuando el correo no existe, para que el login
+// tarde lo mismo exista o no la cuenta (evita enumeración de correos).
+const HASH_RELLENO = bcrypt.hashSync(crypto.randomUUID(), 11);
 
 // ── reCAPTCHA v3 ─────────────────────────────────────────────────────────────
 // La clave de sitio es pública (va al navegador); la secreta va por env.
@@ -312,8 +337,11 @@ app.post('/api/auth/login', rateLimitLogin, async (req, res) => {
       'SELECT * FROM "CLIENTES" WHERE "EMAIL" = $1 AND "ACTIVO" = true', [emailNorm]);
     const cliente = q.rows[0];
 
-    // Mensaje genérico → no revelar si el email existe o no
-    if (!cliente?.PASSWORD_HASH || !bcrypt.compareSync(password, cliente.PASSWORD_HASH)) {
+    // Mensaje genérico y comparación SIEMPRE contra un hash (real o de relleno)
+    // → el tiempo de respuesta no revela si el correo existe.
+    const hashComparar = cliente?.PASSWORD_HASH || HASH_RELLENO;
+    const passwordOk = bcrypt.compareSync(password, hashComparar) && !!cliente?.PASSWORD_HASH;
+    if (!passwordOk) {
       const fallos = (estado?.fallos || 0) + 1;
       fallosPorEmail.set(emailNorm, {
         fallos,
@@ -330,6 +358,10 @@ app.post('/api/auth/login', rateLimitLogin, async (req, res) => {
       cliente.NIVEL = 4;
     }
 
+    // Último acceso: se muestra al usuario el anterior y se registra el actual
+    const accesoAnterior = cliente.ULTIMO_ACCESO;
+    await pool.query('UPDATE "CLIENTES" SET "ULTIMO_ACCESO" = now() WHERE "ID" = $1', [cliente.ID]);
+
     const expira = new Date(Date.now() + JWT_HOURS * 3_600_000);
     const token = jwt.sign(
       { sub: String(cliente.ID), email: cliente.EMAIL, name: cliente.NOMBRE, nivel: String(cliente.NIVEL) },
@@ -337,14 +369,30 @@ app.post('/api/auth/login', rateLimitLogin, async (req, res) => {
       { issuer: JWT_ISSUER, audience: JWT_AUDIENCE, expiresIn: JWT_HOURS * 3600, jwtid: crypto.randomUUID() }
     );
 
+    // El token va SOLO en la cookie httpOnly: JavaScript no puede leerlo
+    res.cookie(COOKIE_SESION, token, {
+      httpOnly: true,
+      sameSite: 'strict',
+      secure: req.secure,
+      maxAge: JWT_HOURS * 3_600_000,
+      path: '/'
+    });
+
     res.json({
-      token, expira: expira.toISOString(),
-      nombre: cliente.NOMBRE, email: cliente.EMAIL, nivel: cliente.NIVEL
+      expira: expira.toISOString(),
+      nombre: cliente.NOMBRE, email: cliente.EMAIL, nivel: cliente.NIVEL,
+      ultimoAcceso: accesoAnterior
     });
   } catch (err) {
     console.error('login:', err);
     res.status(500).json({ mensaje: 'Error interno al iniciar sesión.' });
   }
+});
+
+// POST /api/auth/logout — borra la cookie de sesión
+app.post('/api/auth/logout', (_req, res) => {
+  res.clearCookie(COOKIE_SESION, { httpOnly: true, sameSite: 'strict', path: '/' });
+  res.json({ mensaje: 'Sesión cerrada.' });
 });
 
 // ═════════════════════════ CONTACTO ═════════════════════════
@@ -455,7 +503,7 @@ app.get('/api/cuenta/datos', requireAuth, async (req, res) => {
               fechaRegistro: p.FECHA_REGISTRO, nivel: p.NIVEL },
     proyectos: proyectos.rows.map(r => ({
       titulo: r.TITULO, tipo: r.TIPO, descripcion: r.DESCRIPCION,
-      presupuesto: r.PRESUPUESTO, estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD
+      presupuesto: r.PRESUPUESTO, estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD, notaAdmin: r.NOTA_ADMIN
     }))
   });
 });
@@ -481,7 +529,7 @@ app.get('/api/cuenta/proyectos', requireAuth, async (req, res) => {
     'SELECT * FROM "PROYECTOS" WHERE "CLIENTE_ID" = $1 ORDER BY "FECHA_SOLICITUD" DESC', [req.user.sub]);
   res.json(q.rows.map(r => ({
     id: Number(r.ID), titulo: r.TITULO, tipo: r.TIPO, descripcion: r.DESCRIPCION,
-    presupuesto: r.PRESUPUESTO, estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD
+    presupuesto: r.PRESUPUESTO, estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD, notaAdmin: r.NOTA_ADMIN
   })));
 });
 
@@ -662,7 +710,7 @@ app.get('/api/admin/proyectos', requireAuth, requireAdmin, async (_req, res) => 
   res.json(q.rows.map(r => ({
     id: Number(r.ID), clienteNombre: r.cliente_nombre, clienteEmail: r.cliente_email,
     titulo: r.TITULO, tipo: r.TIPO, descripcion: r.DESCRIPCION, presupuesto: r.PRESUPUESTO,
-    estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD
+    estado: r.ESTADO, fechaSolicitud: r.FECHA_SOLICITUD, notaAdmin: r.NOTA_ADMIN
   })));
 });
 
@@ -676,6 +724,18 @@ app.put('/api/admin/proyectos/:id(\\d+)/estado', requireAuth, requireAdmin, asyn
     'UPDATE "PROYECTOS" SET "ESTADO" = $1 WHERE "ID" = $2', [estado, req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proyecto no encontrado.' });
   res.json({ mensaje: 'Estado actualizado.', estado });
+});
+
+// PUT /api/admin/proyectos/:id/nota — nota del equipo visible para el cliente
+app.put('/api/admin/proyectos/:id(\\d+)/nota', requireAuth, requireAdmin, async (req, res) => {
+  const nota = (req.body?.nota || '').trim();
+  if (nota.length > 1000) {
+    return res.status(400).json({ mensaje: 'La nota no puede superar los 1000 caracteres.' });
+  }
+  const q = await pool.query(
+    'UPDATE "PROYECTOS" SET "NOTA_ADMIN" = $1 WHERE "ID" = $2', [nota || null, req.params.id]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proyecto no encontrado.' });
+  res.json({ mensaje: 'Nota guardada.' });
 });
 
 // PUT /api/admin/proveedores/:id/estado — aprobar o rechazar un proveedor

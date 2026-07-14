@@ -1530,3 +1530,40 @@ html { scroll-behavior: smooth; }
 /* Cancelar solicitud de proyecto */
 .proyecto-cancelar { color: #fca5a5; text-decoration: underline; text-underline-offset: 3px; }
 .proyecto-cancelar:hover { color: #f87171; }
+
+/* ═══════════ AVATAR CON INICIALES, META Y NOTAS DEL EQUIPO ═══════════ */
+.cuenta-avatar span {
+  font-family: var(--font-display); font-size: 22px; font-weight: 800;
+  letter-spacing: 0.04em; color: var(--white);
+}
+.cuenta-meta { font-size: 12px; color: rgba(255,255,255,0.35); margin-top: 4px; }
+
+/* Nota del equipo visible para el cliente */
+.proyecto-nota {
+  display: flex; gap: 12px; align-items: flex-start;
+  background: rgba(96,165,250,0.08);
+  border: 1px solid rgba(96,165,250,0.2);
+  border-radius: var(--radius-md);
+  padding: 14px 16px; margin-bottom: 12px;
+}
+.proyecto-nota > i { font-size: 18px; color: #93c5fd; flex-shrink: 0; margin-top: 1px; }
+.proyecto-nota strong {
+  display: block; font-family: var(--font-display);
+  font-size: 10px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase;
+  color: #93c5fd; margin-bottom: 4px;
+}
+.proyecto-nota p { font-size: 13.5px; color: rgba(255,255,255,0.8); line-height: 1.5; white-space: pre-wrap; }
+
+/* Editor de nota en el panel admin */
+.admin-nota { display: flex; gap: 10px; align-items: flex-start; margin-top: 12px; }
+.admin-nota textarea {
+  flex: 1; resize: vertical; min-height: 44px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-md);
+  color: var(--white); font-family: var(--font-body); font-size: 13px;
+  padding: 10px 14px; outline: none; color-scheme: dark;
+}
+.admin-nota textarea:focus { border-color: rgba(255,255,255,0.3); }
+.admin-nota textarea::placeholder { color: rgba(255,255,255,0.25); }
+@media (max-width: 600px) { .admin-nota { flex-direction: column; } .admin-nota button { align-self: flex-end; } }
