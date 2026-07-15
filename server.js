@@ -16,12 +16,6 @@ const { Pool } = require('pg');
 
 const PORT = process.env.PORT || 8080;
 
-// ── Configuración JWT (mismos issuer/audience que KursApi) ──────────────────
-const JWT_KEY      = process.env.JWT_KEY || 'KURS_ClaveSoloParaDesarrollo_NoUsarEnProduccion_2024!';
-const JWT_ISSUER   = 'KursApi';
-const JWT_AUDIENCE = 'KursFront';
-const JWT_HOURS    = parseInt(process.env.JWT_EXPIRES_HOURS || '2', 10);
-
 // ── PostgreSQL ───────────────────────────────────────────────────────────────
 // Dev local: puerto 5433 para no chocar con el Postgres nativo de la máquina
 const databaseUrl = process.env.DATABASE_URL || 'postgres://kurs_user:kurs_dev@localhost:5433/kurs';
@@ -30,6 +24,21 @@ const pool = new Pool({
   connectionString: databaseUrl,
   ssl: isLocalDb ? false : { rejectUnauthorized: false }
 });
+
+// ── Configuración JWT (mismos issuer/audience que KursApi) ──────────────────
+// En producción (BD remota o NODE_ENV=production) JWT_KEY es obligatoria:
+// la clave de desarrollo está publicada en el código, y firmar con ella
+// permitiría a cualquiera forjar un token de administrador.
+const esProduccion = process.env.NODE_ENV === 'production' || !isLocalDb;
+const JWT_KEY = process.env.JWT_KEY ||
+  (esProduccion ? null : 'KURS_ClaveSoloParaDesarrollo_NoUsarEnProduccion_2024!');
+if (!JWT_KEY) {
+  console.error('FALTA JWT_KEY: define la variable de entorno JWT_KEY (una cadena secreta larga) antes de arrancar en producción.');
+  process.exit(1);
+}
+const JWT_ISSUER   = 'KursApi';
+const JWT_AUDIENCE = 'KursFront';
+const JWT_HOURS    = parseInt(process.env.JWT_EXPIRES_HOURS || '2', 10);
 
 // Mismo esquema que creó EF Core (nombres entre comillas = mayúsculas exactas)
 async function initSchema() {
@@ -333,7 +342,7 @@ app.post('/api/auth/registro', limiteRegistro, async (req, res) => {
       return res.status(409).json({ mensaje: 'Ya existe una cuenta con ese correo electrónico.' });
     }
 
-    const hash = bcrypt.hashSync(password, 11);
+    const hash = await bcrypt.hash(password, 11);
     const ins = await pool.query(
       `INSERT INTO "CLIENTES" ("ID","NOMBRE","EMAIL","EMPRESA","PASSWORD_HASH","FECHA_REGISTRO","ACTIVO","NIVEL")
        VALUES (nextval('"SEQ_CLIENTES"'), $1, $2, $3, $4, now(), true, 2)
@@ -343,6 +352,11 @@ app.post('/api/auth/registro', limiteRegistro, async (req, res) => {
 
     res.json({ mensaje: 'Cuenta creada correctamente.', id: Number(ins.rows[0].ID) });
   } catch (err) {
+    // 23505 = unique_violation: dos registros simultáneos con el mismo correo
+    // pasaron el "¿existe?" a la vez; el índice UNIQUE atrapa al segundo.
+    if (err.code === '23505') {
+      return res.status(409).json({ mensaje: 'Ya existe una cuenta con ese correo electrónico.' });
+    }
     console.error('registro:', err);
     res.status(500).json({ mensaje: 'Error interno al crear la cuenta.' });
   }
@@ -371,7 +385,7 @@ app.post('/api/auth/login', rateLimitLogin, async (req, res) => {
     // Mensaje genérico y comparación SIEMPRE contra un hash (real o de relleno)
     // → el tiempo de respuesta no revela si el correo existe.
     const hashComparar = cliente?.PASSWORD_HASH || HASH_RELLENO;
-    const passwordOk = !!hashComparar && bcrypt.compareSync(password, hashComparar) &&
+    const passwordOk = !!hashComparar && (await bcrypt.compare(password, hashComparar)) &&
                        !!cliente?.PASSWORD_HASH;
     if (!passwordOk) {
       const fallos = (estado?.fallos || 0) + 1;
@@ -528,12 +542,12 @@ app.put('/api/cuenta/password', requireAuth, async (req, res) => {
 
   const q = await pool.query('SELECT "PASSWORD_HASH" FROM "CLIENTES" WHERE "ID" = $1', [req.user.sub]);
   const hash = q.rows[0]?.PASSWORD_HASH;
-  if (!hash || !bcrypt.compareSync(actual, hash)) {
+  if (!hash || !(await bcrypt.compare(actual, hash))) {
     return res.status(400).json({ mensaje: 'La contraseña actual no es correcta.' });
   }
 
   await pool.query('UPDATE "CLIENTES" SET "PASSWORD_HASH" = $1 WHERE "ID" = $2',
-    [bcrypt.hashSync(nueva, 11), req.user.sub]);
+    [await bcrypt.hash(nueva, 11), req.user.sub]);
   res.json({ mensaje: 'Contraseña actualizada correctamente.' });
 });
 
@@ -545,7 +559,7 @@ app.get('/api/cuenta/datos', requireAuth, async (req, res) => {
   if (perfil.rowCount === 0) return res.status(404).json({ mensaje: 'Cuenta no encontrada.' });
 
   const proyectos = await pool.query(
-    'SELECT "TITULO","TIPO","DESCRIPCION","PRESUPUESTO","ESTADO","FECHA_SOLICITUD" FROM "PROYECTOS" WHERE "CLIENTE_ID" = $1 ORDER BY "FECHA_SOLICITUD"',
+    'SELECT "TITULO","TIPO","DESCRIPCION","PRESUPUESTO","ESTADO","FECHA_SOLICITUD","NOTA_ADMIN" FROM "PROYECTOS" WHERE "CLIENTE_ID" = $1 ORDER BY "FECHA_SOLICITUD"',
     [req.user.sub]);
 
   const p = perfil.rows[0];
@@ -568,7 +582,7 @@ app.delete('/api/cuenta', requireAuth, async (req, res) => {
 
   const q = await pool.query('SELECT "PASSWORD_HASH" FROM "CLIENTES" WHERE "ID" = $1', [req.user.sub]);
   const hash = q.rows[0]?.PASSWORD_HASH;
-  if (!hash || !bcrypt.compareSync(password, hash)) {
+  if (!hash || !(await bcrypt.compare(password, hash))) {
     return res.status(400).json({ mensaje: 'La contraseña no es correcta.' });
   }
 
@@ -634,6 +648,11 @@ app.post('/api/proveedores', async (req, res) => {
       telefono.trim().length > 30 || categoria.trim().length > 100 ||
       (descripcion?.trim().length ?? 0) > 4000 || (web?.trim().length ?? 0) > 300) {
     return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
+  // Solo URLs http(s): el enlace se muestra clicable en el panel de admin,
+  // y un esquema javascript: sería ejecutable en el navegador del administrador.
+  if (web?.trim() && !/^https?:\/\//i.test(web.trim())) {
+    return res.status(400).json({ mensaje: 'La página web debe empezar con http:// o https://.' });
   }
   if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
     return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
@@ -701,6 +720,14 @@ app.post('/api/clientes', requireAuth, requireAdmin, async (req, res) => {
 app.put('/api/clientes/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
   const { nombre, email, empresa, telefono, activo } = req.body || {};
   const id = req.params.id;
+
+  if (!nombre?.trim() || !email?.trim()) {
+    return res.status(400).json({ mensaje: 'Nombre y correo son obligatorios.' });
+  }
+  if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 || email.trim().length > 320 ||
+      (empresa?.trim().length ?? 0) > 200 || (telefono?.trim().length ?? 0) > 30) {
+    return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
+  }
 
   const actual = await pool.query('SELECT 1 FROM "CLIENTES" WHERE "ID" = $1', [id]);
   if (actual.rowCount === 0) return res.status(404).json({ mensaje: 'Cliente no encontrado.' });
