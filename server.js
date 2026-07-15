@@ -90,6 +90,11 @@ async function initSchema() {
 
     ALTER TABLE "CLIENTES"  ADD COLUMN IF NOT EXISTS "ULTIMO_ACCESO" timestamptz;
     ALTER TABLE "PROYECTOS" ADD COLUMN IF NOT EXISTS "NOTA_ADMIN" varchar(1000);
+
+    ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "EMPRESA"     varchar(200);
+    ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "TELEFONO"    varchar(30);
+    ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "SERVICIO"    varchar(60);
+    ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "PRESUPUESTO" varchar(60);
   `);
 }
 
@@ -100,8 +105,30 @@ const mapCliente = (r) => ({
 });
 const mapMensaje = (r) => ({
   id: Number(r.ID), nombre: r.NOMBRE, email: r.EMAIL, asunto: r.ASUNTO,
-  mensaje: r.MENSAJE, fechaEnvio: r.FECHA_ENVIO, leido: r.LEIDO
+  mensaje: r.MENSAJE, fechaEnvio: r.FECHA_ENVIO, leido: r.LEIDO,
+  empresa: r.EMPRESA, telefono: r.TELEFONO, servicio: r.SERVICIO, presupuesto: r.PRESUPUESTO
 });
+
+// ── Webhook de n8n ───────────────────────────────────────────────────────────
+// Cada mensaje de contacto se reenvía al flujo de n8n (fire-and-forget:
+// si n8n no responde, el formulario NO falla — el mensaje ya quedó en la BD).
+// OJO: la URL "webhook-test" solo funciona mientras el flujo está en modo
+// prueba en el editor; al activar el workflow usa la URL /webhook/ (sin -test)
+// vía la variable de entorno N8N_WEBHOOK_URL.
+const N8N_WEBHOOK_URL = process.env.N8N_WEBHOOK_URL ||
+  'https://franciscoxxx.app.n8n.cloud/webhook-test/5526794f-59c5-42f6-80ed-6f25d0ae3309';
+
+function notificarN8n(datos) {
+  if (!N8N_WEBHOOK_URL) return;
+  fetch(N8N_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(datos),
+    signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(5000) : undefined
+  }).then(r => {
+    if (!r.ok) console.error('n8n webhook respondió', r.status);
+  }).catch(err => console.error('n8n webhook:', err.message));
+}
 
 // ── Throttle de login (port de LoginThrottleService) ────────────────────────
 // 5 intentos fallidos por email → bloqueo 15 min. 5 peticiones/min por IP.
@@ -402,14 +429,16 @@ app.post('/api/auth/logout', (_req, res) => {
 
 // ═════════════════════════ CONTACTO ═════════════════════════
 
-// POST /api/contacto — público, guarda el formulario de contacto
+// POST /api/contacto — público, guarda el formulario y lo reenvía a n8n
 app.post('/api/contacto', async (req, res) => {
-  const { nombre, email, asunto, mensaje } = req.body || {};
-  if (!nombre?.trim() || !email?.trim() || !asunto?.trim() || !mensaje?.trim()) {
-    return res.status(400).json({ mensaje: 'Todos los campos son obligatorios.' });
+  const { nombre, email, asunto, mensaje, empresa, telefono, servicio, presupuesto } = req.body || {};
+  if (!nombre?.trim() || !email?.trim() || !asunto?.trim() || !mensaje?.trim() || !servicio?.trim()) {
+    return res.status(400).json({ mensaje: 'Completa todos los campos obligatorios.' });
   }
   if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 ||
-      email.trim().length > 320 || asunto.trim().length > 300 || mensaje.trim().length > 4000) {
+      email.trim().length > 320 || asunto.trim().length > 300 || mensaje.trim().length > 4000 ||
+      (empresa?.trim().length ?? 0) > 200 || (telefono?.trim().length ?? 0) > 30 ||
+      servicio.trim().length > 60 || (presupuesto?.trim().length ?? 0) > 60) {
     return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
   }
   if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
@@ -417,11 +446,30 @@ app.post('/api/contacto', async (req, res) => {
   }
 
   try {
-    await pool.query(
-      `INSERT INTO "MENSAJES_CONTACTO" ("ID","NOMBRE","EMAIL","ASUNTO","MENSAJE","FECHA_ENVIO","LEIDO")
-       VALUES (nextval('"SEQ_MENSAJES"'), $1, $2, $3, $4, now(), false)`,
-      [nombre.trim(), email.trim(), asunto.trim(), mensaje.trim()]
+    const ins = await pool.query(
+      `INSERT INTO "MENSAJES_CONTACTO"
+         ("ID","NOMBRE","EMAIL","ASUNTO","MENSAJE","EMPRESA","TELEFONO","SERVICIO","PRESUPUESTO","FECHA_ENVIO","LEIDO")
+       VALUES (nextval('"SEQ_MENSAJES"'), $1, $2, $3, $4, $5, $6, $7, $8, now(), false)
+       RETURNING "ID","FECHA_ENVIO"`,
+      [nombre.trim(), email.trim(), asunto.trim(), mensaje.trim(),
+       empresa?.trim() || null, telefono?.trim() || null, servicio.trim(), presupuesto?.trim() || null]
     );
+
+    // Reenvío al flujo de n8n (no bloquea la respuesta al usuario)
+    notificarN8n({
+      evento: 'contacto',
+      id: Number(ins.rows[0].ID),
+      fecha: ins.rows[0].FECHA_ENVIO,
+      nombre: nombre.trim(),
+      email: email.trim(),
+      empresa: empresa?.trim() || null,
+      telefono: telefono?.trim() || null,
+      servicio: servicio.trim(),
+      presupuesto: presupuesto?.trim() || null,
+      asunto: asunto.trim(),
+      mensaje: mensaje.trim()
+    });
+
     res.json({ mensaje: 'Mensaje recibido. ¡Nos pondremos en contacto pronto!' });
   } catch (err) {
     console.error('contacto:', err);

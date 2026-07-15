@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=10" />
+  <link rel="stylesheet" href="/css/app.css?v=11" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
@@ -61,8 +61,7 @@
       <li><a href="/proveedores"><i class="ti ti-truck-delivery"></i> Proveedores</a></li>
     </ul>
     <div class="nav-auth">
-      <a href="/login" class="btn-login"><i class="ti ti-user"></i> Iniciar sesión</a>
-      <a href="/registro" class="btn-register glass-bubble-btn"><i class="ti ti-user-plus"></i> Registrarse</a>
+      <!-- Acceso de clientes deshabilitado por ahora; /login sigue activo por URL directa para administración -->
     </div>
   </nav>
 
@@ -118,49 +117,108 @@
 
   <!-- ══════════════ FORMULARIO ══════════════ -->
   <div class="contact-form-section">
-    <h2>Envíanos un <span class="gradient-text">mensaje</span></h2>
+    <h2>Cuéntanos tu <span class="gradient-text">proyecto</span></h2>
+    <p class="form-sub">Completa el formulario y te respondemos en menos de 24 horas con una propuesta inicial.</p>
 
     <div class="form-success glass-bubble" id="contactoOk" style="display:none">
       <i class="ti ti-circle-check"></i>
       <h3>¡Mensaje enviado!</h3>
-      <p>Nos pondremos en contacto contigo muy pronto.</p>
+      <p>Gracias por escribirnos. Te responderemos en menos de 24 horas.</p>
+      <a href="/" class="btn-primary glass-bubble-btn form-success-btn">
+        <i class="ti ti-home"></i> Volver al inicio
+      </a>
     </div>
 
     <div class="contact-form glass-bubble" id="contactoForm">
+
       <div class="form-row">
         <div class="form-group">
-          <label>Nombre</label>
+          <label for="nombre">Nombre completo <span class="req-star">*</span></label>
           <div class="input-wrap">
             <i class="ti ti-user"></i>
-            <input type="text" id="nombre" placeholder="Tu nombre completo" />
+            <input type="text" id="nombre" placeholder="Tu nombre completo" maxlength="200" autocomplete="name" />
           </div>
         </div>
         <div class="form-group">
-          <label>Correo electrónico</label>
+          <label for="empresa">Empresa <span class="form-opcional">(opcional)</span></label>
           <div class="input-wrap">
-            <i class="ti ti-mail"></i>
-            <input type="email" id="email" placeholder="tu@correo.com" />
+            <i class="ti ti-building"></i>
+            <input type="text" id="empresa" placeholder="Nombre de tu negocio" maxlength="200" autocomplete="organization" />
           </div>
         </div>
       </div>
-      <div class="form-group">
-        <label>Asunto</label>
-        <div class="input-wrap">
-          <i class="ti ti-tag"></i>
-          <input type="text" id="asunto" placeholder="¿En qué podemos ayudarte?" />
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="email">Correo electrónico <span class="req-star">*</span></label>
+          <div class="input-wrap">
+            <i class="ti ti-mail"></i>
+            <input type="email" id="email" placeholder="tu@correo.com" maxlength="320" autocomplete="email" />
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="telefono">Teléfono / WhatsApp <span class="form-opcional">(opcional)</span></label>
+          <div class="input-wrap">
+            <i class="ti ti-phone"></i>
+            <input type="tel" id="telefono" placeholder="+51 9XX XXX XXX" maxlength="30" autocomplete="tel" />
+          </div>
         </div>
       </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="servicio">¿Qué necesitas? <span class="req-star">*</span></label>
+          <div class="input-wrap">
+            <i class="ti ti-category"></i>
+            <select id="servicio" class="form-select">
+              <option value="">Selecciona un servicio</option>
+              <option>Página web</option>
+              <option>Tienda online</option>
+              <option>Aplicación web</option>
+              <option>Automatización de procesos</option>
+              <option>Integración con IA</option>
+              <option>Consultoría</option>
+              <option>Otro</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="presupuesto">Presupuesto estimado <span class="form-opcional">(opcional)</span></label>
+          <div class="input-wrap">
+            <i class="ti ti-coin"></i>
+            <select id="presupuesto" class="form-select">
+              <option value="">Prefiero no decirlo aún</option>
+              <option>Menos de S/ 1,000</option>
+              <option>S/ 1,000 – 3,000</option>
+              <option>S/ 3,000 – 10,000</option>
+              <option>Más de S/ 10,000</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="form-group">
-        <label>Mensaje</label>
+        <label for="asunto">Asunto <span class="req-star">*</span></label>
+        <div class="input-wrap">
+          <i class="ti ti-tag"></i>
+          <input type="text" id="asunto" placeholder="Resume tu consulta en una línea" maxlength="300" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="mensaje">Cuéntanos más <span class="req-star">*</span></label>
         <div class="input-wrap">
           <i class="ti ti-message" style="position:absolute;left:16px;top:14px;"></i>
-          <textarea id="mensaje" placeholder="Cuéntanos más sobre tu proyecto..."></textarea>
+          <textarea id="mensaje" placeholder="Describe tu proyecto: objetivos, referencias, plazos..." maxlength="4000"></textarea>
         </div>
+        <span class="form-contador"><span id="mensajeContador">0</span> / 4000</span>
       </div>
 
       <p class="form-error" id="contactoError" style="display:none"></p>
 
-      <div class="form-submit">
+      <div class="form-pie">
+        <p class="form-legal">Al enviar aceptas nuestra <a href="/privacidad">Política de Privacidad</a>.
+          Protegido por reCAPTCHA.</p>
         <button class="btn-send glass-bubble-btn" id="contactoBtn">
           <i class="ti ti-send"></i>
           <span>Enviar mensaje</span>
@@ -192,6 +250,6 @@
     <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados. · <a href="/privacidad" class="footer-legal-link">Política de Privacidad</a></p>
   </footer>
 
-  <script src="/js/kurs.js?v=10"></script>
+  <script src="/js/kurs.js?v=11"></script>
 </body>
 </html>

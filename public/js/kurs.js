@@ -451,27 +451,40 @@
     enviarConEnter(document.querySelector('.login-fields'), registroBtn);
   }
 
-  // ═════════════ CONTACTO (port de Contacto.cs) ═════════════
+  // ═════════════ CONTACTO ═════════════
   const contactoBtn = $('contactoBtn');
   if (contactoBtn) {
     const htmlNormal = contactoBtn.innerHTML;
+
+    // Contador de caracteres del mensaje
+    const mensajeInput = $('mensaje');
+    const contador = $('mensajeContador');
+    if (mensajeInput && contador) {
+      mensajeInput.addEventListener('input', function () {
+        contador.textContent = mensajeInput.value.length;
+      });
+    }
+
     contactoBtn.addEventListener('click', async function () {
       const error = $('contactoError');
       error.style.display = 'none';
 
       const nombre = $('nombre').value.trim();
+      const empresa = $('empresa').value.trim();
       const email = $('email').value.trim();
+      const telefono = $('telefono').value.trim();
+      const servicio = $('servicio').value;
+      const presupuesto = $('presupuesto').value;
       const asunto = $('asunto').value.trim();
       const mensaje = $('mensaje').value.trim();
 
-      if (!nombre || !email || !asunto || !mensaje) {
-        error.textContent = 'Por favor completa todos los campos antes de enviar.';
-        error.style.display = ''; return;
-      }
-      if (!emailValido(email)) {
-        error.textContent = 'Ingresa un correo electrónico válido.';
-        error.style.display = ''; return;
-      }
+      function fallo(msg) { error.textContent = msg; error.style.display = ''; }
+
+      if (!nombre) return fallo('Ingresa tu nombre completo.');
+      if (!email || !emailValido(email)) return fallo('Ingresa un correo electrónico válido.');
+      if (!servicio) return fallo('Cuéntanos qué servicio necesitas.');
+      if (!asunto) return fallo('Escribe un asunto para tu mensaje.');
+      if (!mensaje) return fallo('Cuéntanos un poco más sobre tu proyecto.');
 
       setCargando(contactoBtn, true, 'Enviando...', htmlNormal);
       try {
@@ -479,19 +492,24 @@
         const resp = await fetch('/api/contacto', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre: nombre, email: email, asunto: asunto, mensaje: mensaje, recaptchaToken: captcha })
+          body: JSON.stringify({
+            nombre: nombre, email: email, asunto: asunto, mensaje: mensaje,
+            empresa: empresa || null, telefono: telefono || null,
+            servicio: servicio, presupuesto: presupuesto || null,
+            recaptchaToken: captcha
+          })
         });
 
         if (resp.ok) {
           $('contactoForm').style.display = 'none';
           $('contactoOk').style.display = '';
+          $('contactoOk').scrollIntoView({ behavior: 'smooth', block: 'center' });
         } else {
-          error.textContent = 'Ocurrió un problema al enviar. Inténtalo de nuevo.';
-          error.style.display = '';
+          const data = await resp.json().catch(function () { return {}; });
+          fallo(data.mensaje || 'Ocurrió un problema al enviar. Inténtalo de nuevo.');
         }
       } catch {
-        error.textContent = 'No se pudo conectar con el servidor. Revisa tu conexión.';
-        error.style.display = '';
+        fallo('No se pudo conectar con el servidor. Revisa tu conexión.');
       } finally {
         setCargando(contactoBtn, false, '', htmlNormal);
       }
@@ -919,7 +937,13 @@
                        : '<span class="proyecto-estado estado-solicitado">Nuevo</span>') + '</div>' +
             '<p class="admin-item-meta"><i class="ti ti-user"></i> ' + esc(m.nombre) + ' · ' +
               '<a href="mailto:' + esc(m.email) + '">' + esc(m.email) + '</a>' +
+              (m.telefono ? ' · <i class="ti ti-phone"></i> ' + esc(m.telefono) : '') +
+              (m.empresa ? ' · <i class="ti ti-building"></i> ' + esc(m.empresa) : '') +
               ' · <i class="ti ti-calendar"></i> ' + fecha(m.fechaEnvio) + '</p>' +
+            (m.servicio
+              ? '<p class="admin-item-meta"><i class="ti ti-category"></i> ' + esc(m.servicio) +
+                (m.presupuesto ? ' · <i class="ti ti-coin"></i> ' + esc(m.presupuesto) : '') + '</p>'
+              : '') +
             '<p class="admin-item-desc">' + esc(m.mensaje) + '</p>' +
             (m.leido ? '' : '<div class="admin-item-acciones">' +
               '<button class="btn-send cuenta-btn-sm" data-leido="' + m.id + '"><i class="ti ti-check"></i> Marcar como leído</button></div>') +

@@ -1672,3 +1672,57 @@ html { scroll-behavior: smooth; }
 }
 .datos-error i { font-size: 36px; color: rgba(255,255,255,0.4); }
 .datos-error p { font-size: 14px; color: rgba(255,255,255,0.55); }
+
+/* ═══════════ FORMULARIO DE CONTACTO PROFESIONAL ═══════════ */
+.form-sub {
+  text-align: center; color: rgba(255,255,255,0.5);
+  font-size: 14.5px; margin: -18px auto 28px; max-width: 480px;
+}
+.form-opcional {
+  font-size: 10px; color: rgba(255,255,255,0.35);
+  letter-spacing: 0.06em; text-transform: none;
+}
+
+/* Select con el mismo lenguaje visual de los inputs del formulario */
+.form-group select.form-select {
+  width: 100%;
+  background-color: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: var(--radius-md);
+  color: var(--white);
+  font-family: var(--font-body); font-size: 14px; font-weight: 300;
+  padding: 14px 44px 14px 44px;
+  outline: none; cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  appearance: none; -webkit-appearance: none; color-scheme: dark;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.45)' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+}
+.form-group select.form-select:focus {
+  border-color: rgba(255,255,255,0.3);
+  background-color: rgba(255,255,255,0.08);
+}
+.form-group select.form-select option { background: #141414; color: #fff; }
+
+.form-contador {
+  display: block; text-align: right;
+  font-size: 11.5px; color: rgba(255,255,255,0.3); margin-top: 6px;
+}
+
+.form-pie {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 20px; margin-top: 8px; flex-wrap: wrap;
+}
+.form-legal { font-size: 12px; color: rgba(255,255,255,0.4); max-width: 320px; }
+.form-legal a { color: rgba(255,255,255,0.65); }
+
+.form-success-btn {
+  margin-top: 20px; display: inline-flex; align-items: center; gap: 8px;
+  padding: 12px 28px; border-radius: 999px; text-decoration: none;
+}
+
+@media (max-width: 600px) {
+  .form-pie { flex-direction: column; align-items: stretch; text-align: center; }
+  .form-legal { max-width: none; }
+}
