@@ -865,6 +865,8 @@
       api('/api/admin/resumen').then(function (r) { return r.json(); }).then(function (s) {
         $('adminStats').innerHTML = [
           { i: 'ti-rocket',          n: s.proyectosNuevos,       t: 'Proyectos nuevos',     sub: s.proyectos + ' en total' },
+          { i: 'ti-brand-whatsapp',  n: s.leadsNuevos ?? 0,      t: 'Leads nuevos',
+            sub: (s.leads ?? 0) + ' en total · ' + (s.tareasPendientes ?? 0) + ' tareas pendientes' },
           { i: 'ti-mail',            n: s.mensajesNoLeidos,      t: 'Mensajes sin leer',    sub: s.mensajes + ' en total' },
           { i: 'ti-truck-delivery',  n: s.proveedoresPendientes, t: 'Proveedores por revisar', sub: s.proveedores + ' en total' },
           { i: 'ti-users',           n: s.clientes,              t: 'Clientes activos',     sub: '' }
@@ -923,6 +925,221 @@
           });
         });
       }).catch(function () { estadoError($('adminProyectos'), cargarAdminProyectos); });
+    }
+
+    // ── CRM del chatbot de WhatsApp ──
+    const ESTADOS_LEAD = ['nuevo', 'contactado', 'cotizado', 'cerrado', 'perdido'];
+    const ETIQ_LEAD = { nuevo: 'Nuevo', contactado: 'Contactado', cotizado: 'Cotizado', cerrado: 'Cerrado', perdido: 'Perdido' };
+    const CLASE_LEAD = {
+      nuevo: 'estado-solicitado', contactado: 'estado-progreso', cotizado: 'estado-cotizado',
+      cerrado: 'estado-entregado', perdido: 'estado-cancelado'
+    };
+    let crmLeads = [];          // cache para filtrar sin volver a pedir
+    let crmFiltro = 'todos';
+
+    function fechaHora(f) {
+      return new Date(f).toLocaleString('es-PE',
+        { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function pintarFiltrosCrm() {
+      const filtros = ['todos'].concat(ESTADOS_LEAD);
+      $('crmFiltros').innerHTML = filtros.map(function (f) {
+        const n = f === 'todos' ? crmLeads.length
+                                : crmLeads.filter(function (l) { return l.estado === f; }).length;
+        return '<button class="crm-filtro' + (crmFiltro === f ? ' active' : '') + '" data-filtro="' + f + '">' +
+          (f === 'todos' ? 'Todos' : ETIQ_LEAD[f]) + ' (' + n + ')</button>';
+      }).join('');
+      $('crmFiltros').querySelectorAll('[data-filtro]').forEach(function (b) {
+        b.addEventListener('click', function () { crmFiltro = b.dataset.filtro; pintarCrm(); });
+      });
+    }
+
+    function pintarCrm() {
+      pintarFiltrosCrm();
+      const lista = crmFiltro === 'todos' ? crmLeads
+        : crmLeads.filter(function (l) { return l.estado === crmFiltro; });
+      if (!lista.length) {
+        $('adminCrm').innerHTML = vacio(crmLeads.length
+          ? 'No hay leads en este estado.'
+          : 'Aún no hay leads. Cuando alguien escriba al chatbot de WhatsApp aparecerá aquí.');
+        return;
+      }
+      $('adminCrm').innerHTML = lista.map(function (l) {
+        return '<div class="admin-item glass-bubble" data-leaditem="' + l.id + '">' +
+          '<div class="admin-item-top crm-lead-top" data-toggle="' + l.id + '">' +
+            '<h3>' + (l.nombre ? esc(l.nombre) : '<span class="crm-tel">Sin nombre</span>') +
+              ' <span class="crm-tel">' + esc(l.telefono) + '</span></h3>' +
+            '<div class="crm-badges">' +
+              (l.tareasPendientes ? '<span class="crm-pendientes"><i class="ti ti-bell"></i> ' + l.tareasPendientes + '</span>' : '') +
+              '<span class="proyecto-estado ' + (CLASE_LEAD[l.estado] || '') + '" data-badge="' + l.id + '">' +
+                (ETIQ_LEAD[l.estado] || l.estado) + '</span>' +
+              '<i class="ti ti-chevron-down"></i>' +
+            '</div>' +
+          '</div>' +
+          '<p class="admin-item-meta"><i class="ti ti-message-circle"></i> ' + l.mensajes + ' mensaje(s)' +
+            ' · <i class="ti ti-calendar"></i> Último contacto: ' + fechaHora(l.ultimoContacto) +
+            ' · <i class="ti ti-plant-2"></i> Desde ' + fecha(l.primerContacto) + '</p>' +
+          '<div class="crm-detalle" style="display:none" data-detalle="' + l.id + '"></div>' +
+        '</div>';
+      }).join('');
+
+      $('adminCrm').querySelectorAll('[data-toggle]').forEach(function (top) {
+        top.addEventListener('click', function () {
+          const det = document.querySelector('[data-detalle="' + top.dataset.toggle + '"]');
+          if (det.style.display === 'none') {
+            det.style.display = '';
+            cargarDetalleLead(top.dataset.toggle, det);
+          } else {
+            det.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    function cargarDetalleLead(id, det) {
+      estadoCargando(det);
+      api('/api/admin/crm/leads/' + id).then(function (r) { return r.json(); }).then(function (l) {
+        const chat = l.conversacion.length
+          ? l.conversacion.map(function (m) {
+              return '<div class="crm-msg crm-msg-' + (m.direccion === 'saliente' ? 'saliente' : 'entrante') + '">' +
+                esc(m.texto) + '<time>' + fechaHora(m.fecha) +
+                (m.direccion === 'saliente' ? ' · bot' : '') + '</time></div>';
+            }).join('')
+          : '<p class="crm-chat-vacio">Sin mensajes registrados.</p>';
+
+        const tareas = l.tareas.map(function (t) {
+          const vencida = t.fechaLimite && !t.completada && new Date(t.fechaLimite) < new Date();
+          return '<div class="crm-tarea' + (t.completada ? ' done' : '') + '" data-tarea="' + t.id + '">' +
+            '<input type="checkbox"' + (t.completada ? ' checked' : '') + ' data-tareacheck="' + t.id + '">' +
+            '<span class="crm-tarea-txt">' + esc(t.descripcion) + '</span>' +
+            (t.fechaLimite ? '<span class="crm-tarea-fecha' + (vencida ? ' vencida' : '') + '">' +
+              '<i class="ti ti-calendar-due"></i> ' + fecha(t.fechaLimite) + '</span>' : '') +
+            '<button class="crm-tarea-borrar" data-tareaborrar="' + t.id + '" aria-label="Eliminar tarea">' +
+              '<i class="ti ti-trash"></i></button>' +
+          '</div>';
+        }).join('');
+
+        det.innerHTML =
+          '<div class="crm-chat">' + chat + '</div>' +
+          '<div class="admin-item-acciones">' +
+            '<label>Estado:</label>' +
+            '<select class="admin-estado-select" data-leadestado="' + l.id + '">' +
+              ESTADOS_LEAD.map(function (e) {
+                return '<option value="' + e + '"' + (e === l.estado ? ' selected' : '') + '>' + ETIQ_LEAD[e] + '</option>';
+              }).join('') +
+            '</select>' +
+          '</div>' +
+          '<div class="admin-nota">' +
+            '<input type="text" data-leadnombre="' + l.id + '" maxlength="200" ' +
+              'placeholder="Nombre del lead..." value="' + esc(l.nombre || '') + '" ' +
+              'style="flex:0 1 220px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);' +
+              'border-radius:12px;color:inherit;font-size:13px;padding:10px 14px;outline:none">' +
+            '<textarea data-leadnotas="' + l.id + '" maxlength="4000" rows="2" ' +
+              'placeholder="Notas internas (solo las ven los administradores)...">' + esc(l.notas || '') + '</textarea>' +
+            '<button class="btn-send cuenta-btn-sm" data-guardarlead="' + l.id + '">' +
+              '<i class="ti ti-device-floppy"></i> Guardar</button>' +
+          '</div>' +
+          '<div class="crm-tareas">' +
+            '<h4><i class="ti ti-checklist"></i> Seguimientos</h4>' + tareas +
+            '<div class="crm-tarea-add">' +
+              '<input type="text" class="crm-tarea-desc" maxlength="500" placeholder="Nueva tarea (ej. llamar el viernes)...">' +
+              '<input type="date" class="crm-tarea-fechal">' +
+              '<button class="btn-send cuenta-btn-sm" data-agregartarea="' + l.id + '">' +
+                '<i class="ti ti-plus"></i> Agregar</button>' +
+            '</div>' +
+          '</div>';
+
+        // Cambiar estado del pipeline (actualiza la etiqueta sin recargar la lista)
+        det.querySelector('[data-leadestado]').addEventListener('change', async function () {
+          const sel = this;
+          sel.disabled = true;
+          try {
+            await api('/api/admin/crm/leads/' + l.id, {
+              method: 'PUT', body: JSON.stringify({ estado: sel.value })
+            });
+            const badge = document.querySelector('[data-badge="' + l.id + '"]');
+            badge.textContent = ETIQ_LEAD[sel.value];
+            badge.className = 'proyecto-estado ' + (CLASE_LEAD[sel.value] || '');
+            const enCache = crmLeads.find(function (x) { return x.id === l.id; });
+            if (enCache) enCache.estado = sel.value;
+            pintarFiltrosCrm();
+            cargarResumen();
+          } catch {}
+          sel.disabled = false;
+        });
+
+        // Guardar nombre y notas
+        det.querySelector('[data-guardarlead]').addEventListener('click', async function () {
+          const btn = this, original = btn.innerHTML;
+          btn.disabled = true;
+          try {
+            await api('/api/admin/crm/leads/' + l.id, {
+              method: 'PUT',
+              body: JSON.stringify({
+                nombre: det.querySelector('[data-leadnombre]').value.trim() || null,
+                notas: det.querySelector('[data-leadnotas]').value.trim()
+              })
+            });
+            btn.innerHTML = '<i class="ti ti-check"></i> Guardado';
+            setTimeout(function () { btn.innerHTML = original; btn.disabled = false; }, 1500);
+            const enCache = crmLeads.find(function (x) { return x.id === l.id; });
+            if (enCache) enCache.nombre = det.querySelector('[data-leadnombre]').value.trim() || null;
+          } catch { btn.disabled = false; }
+        });
+
+        // Completar / reabrir tarea
+        det.querySelectorAll('[data-tareacheck]').forEach(function (chk) {
+          chk.addEventListener('change', async function () {
+            chk.disabled = true;
+            try {
+              await api('/api/admin/crm/tareas/' + chk.dataset.tareacheck, {
+                method: 'PUT', body: JSON.stringify({ completada: chk.checked })
+              });
+              chk.closest('.crm-tarea').classList.toggle('done', chk.checked);
+              cargarResumen();
+            } catch { chk.checked = !chk.checked; }
+            chk.disabled = false;
+          });
+        });
+
+        // Eliminar tarea
+        det.querySelectorAll('[data-tareaborrar]').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            if (!window.confirm('¿Eliminar esta tarea?')) return;
+            try {
+              await api('/api/admin/crm/tareas/' + btn.dataset.tareaborrar, { method: 'DELETE' });
+              btn.closest('.crm-tarea').remove();
+              cargarResumen();
+            } catch {}
+          });
+        });
+
+        // Agregar tarea
+        det.querySelector('[data-agregartarea]').addEventListener('click', async function () {
+          const desc = det.querySelector('.crm-tarea-desc').value.trim();
+          if (!desc) return;
+          const fechal = det.querySelector('.crm-tarea-fechal').value;
+          const btn = this;
+          btn.disabled = true;
+          try {
+            await api('/api/admin/crm/leads/' + l.id + '/tareas', {
+              method: 'POST',
+              body: JSON.stringify({ descripcion: desc, fechaLimite: fechal || null })
+            });
+            cargarDetalleLead(l.id, det);   // re-pinta el detalle con la tarea nueva
+            cargarResumen();
+          } catch { btn.disabled = false; }
+        });
+      }).catch(function () { estadoError(det, function () { cargarDetalleLead(id, det); }); });
+    }
+
+    function cargarCrm() {
+      estadoCargando($('adminCrm'));
+      api('/api/admin/crm/leads').then(function (r) { return r.json(); }).then(function (lista) {
+        crmLeads = lista;
+        pintarCrm();
+      }).catch(function () { estadoError($('adminCrm'), cargarCrm); });
     }
 
     // ── Mensajes ──
@@ -1027,6 +1244,7 @@
     }
 
     cargarAdminProyectos();
+    cargarCrm();
     cargarAdminMensajes();
     cargarAdminProveedores();
     cargarAdminClientes();

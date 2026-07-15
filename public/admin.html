@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=11" />
+  <link rel="stylesheet" href="/css/app.css?v=12" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
@@ -71,6 +71,7 @@
     <!-- Pestañas -->
     <div class="cuenta-tabs">
       <button class="cuenta-tab active" data-tab="proyectos"><i class="ti ti-rocket"></i> Proyectos</button>
+      <button class="cuenta-tab" data-tab="crm"><i class="ti ti-brand-whatsapp"></i> CRM</button>
       <button class="cuenta-tab" data-tab="mensajes"><i class="ti ti-mail"></i> Mensajes</button>
       <button class="cuenta-tab" data-tab="proveedores"><i class="ti ti-truck-delivery"></i> Proveedores</button>
       <button class="cuenta-tab" data-tab="clientes"><i class="ti ti-users"></i> Clientes</button>
@@ -80,6 +81,15 @@
       <div class="cuenta-card glass-bubble">
         <h2>Proyectos solicitados</h2>
         <div id="adminProyectos" class="admin-lista"></div>
+      </div>
+    </section>
+
+    <section class="cuenta-panel" id="panel-crm">
+      <div class="cuenta-card glass-bubble">
+        <h2>CRM — Chatbot de WhatsApp</h2>
+        <p class="crm-sub">Leads registrados por el chatbot. Haz clic en un lead para ver la conversación y sus tareas.</p>
+        <div class="crm-filtros" id="crmFiltros"></div>
+        <div id="adminCrm" class="admin-lista"></div>
       </div>
     </section>
 
@@ -106,6 +116,6 @@
 
   </div>
 
-  <script src="/js/kurs.js?v=11"></script>
+  <script src="/js/kurs.js?v=12"></script>
 </body>
 </html>

@@ -104,6 +104,39 @@ async function initSchema() {
     ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "TELEFONO"    varchar(30);
     ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "SERVICIO"    varchar(60);
     ALTER TABLE "MENSAJES_CONTACTO" ADD COLUMN IF NOT EXISTS "PRESUPUESTO" varchar(60);
+
+    -- CRM del chatbot de WhatsApp: leads, conversaciones y tareas de seguimiento
+    CREATE SEQUENCE IF NOT EXISTS "SEQ_CRM_LEADS";
+    CREATE TABLE IF NOT EXISTS "CRM_LEADS" (
+      "ID"              bigint PRIMARY KEY,
+      "TELEFONO"        varchar(30) NOT NULL UNIQUE,
+      "NOMBRE"          varchar(200),
+      "ORIGEN"          varchar(60) NOT NULL DEFAULT 'whatsapp',
+      "ESTADO"          varchar(20) NOT NULL DEFAULT 'nuevo',
+      "NOTAS"           varchar(4000),
+      "PRIMER_CONTACTO" timestamptz NOT NULL DEFAULT now(),
+      "ULTIMO_CONTACTO" timestamptz NOT NULL DEFAULT now()
+    );
+
+    CREATE SEQUENCE IF NOT EXISTS "SEQ_CRM_MENSAJES";
+    CREATE TABLE IF NOT EXISTS "CRM_MENSAJES" (
+      "ID"        bigint PRIMARY KEY,
+      "LEAD_ID"   bigint NOT NULL REFERENCES "CRM_LEADS"("ID"),
+      "DIRECCION" varchar(10) NOT NULL DEFAULT 'entrante',
+      "TEXTO"     varchar(4000) NOT NULL,
+      "FECHA"     timestamptz NOT NULL DEFAULT now()
+    );
+    CREATE INDEX IF NOT EXISTS "IX_CRM_MENSAJES_LEAD" ON "CRM_MENSAJES" ("LEAD_ID", "FECHA");
+
+    CREATE SEQUENCE IF NOT EXISTS "SEQ_CRM_TAREAS";
+    CREATE TABLE IF NOT EXISTS "CRM_TAREAS" (
+      "ID"           bigint PRIMARY KEY,
+      "LEAD_ID"      bigint NOT NULL REFERENCES "CRM_LEADS"("ID"),
+      "DESCRIPCION"  varchar(500) NOT NULL,
+      "FECHA_LIMITE" timestamptz,
+      "COMPLETADA"   boolean NOT NULL DEFAULT false,
+      "CREADA"       timestamptz NOT NULL DEFAULT now()
+    );
   `);
 }
 
@@ -770,14 +803,19 @@ app.get('/api/admin/resumen', requireAuth, requireAdmin, async (_req, res) => {
       (SELECT COUNT(*) FROM "PROYECTOS")                                   AS proyectos,
       (SELECT COUNT(*) FROM "PROYECTOS" WHERE "ESTADO" = 'solicitado')     AS proyectos_nuevos,
       (SELECT COUNT(*) FROM "PROVEEDORES")                                 AS proveedores,
-      (SELECT COUNT(*) FROM "PROVEEDORES" WHERE "ESTADO" = 'pendiente')    AS proveedores_pendientes
+      (SELECT COUNT(*) FROM "PROVEEDORES" WHERE "ESTADO" = 'pendiente')    AS proveedores_pendientes,
+      (SELECT COUNT(*) FROM "CRM_LEADS")                                   AS leads,
+      (SELECT COUNT(*) FROM "CRM_LEADS" WHERE "ESTADO" = 'nuevo')          AS leads_nuevos,
+      (SELECT COUNT(*) FROM "CRM_TAREAS" WHERE NOT "COMPLETADA")           AS tareas_pendientes
   `);
   const r = q.rows[0];
   res.json({
     clientes: Number(r.clientes),
     mensajes: Number(r.mensajes), mensajesNoLeidos: Number(r.mensajes_no_leidos),
     proyectos: Number(r.proyectos), proyectosNuevos: Number(r.proyectos_nuevos),
-    proveedores: Number(r.proveedores), proveedoresPendientes: Number(r.proveedores_pendientes)
+    proveedores: Number(r.proveedores), proveedoresPendientes: Number(r.proveedores_pendientes),
+    leads: Number(r.leads), leadsNuevos: Number(r.leads_nuevos),
+    tareasPendientes: Number(r.tareas_pendientes)
   });
 });
 
@@ -828,6 +866,158 @@ app.put('/api/admin/proveedores/:id(\\d+)/estado', requireAuth, requireAdmin, as
     'UPDATE "PROVEEDORES" SET "ESTADO" = $1 WHERE "ID" = $2', [estado, req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proveedor no encontrado.' });
   res.json({ mensaje: 'Estado actualizado.', estado });
+});
+
+// ═════════════════════════ CRM WHATSAPP ═════════════════════════
+// El chatbot de n8n registra aquí cada mensaje; los administradores
+// gestionan los leads desde el panel /admin (pestaña CRM).
+
+// Token secreto para n8n (header X-Api-Token). Sin token configurado el
+// webhook queda deshabilitado: nunca se deja una puerta abierta por defecto.
+const CRM_API_TOKEN = process.env.CRM_API_TOKEN || '';
+
+function tokenCrmValido(req) {
+  const recibido = String(req.headers['x-api-token'] || '');
+  if (!CRM_API_TOKEN || !recibido) return false;
+  const a = Buffer.from(recibido), b = Buffer.from(CRM_API_TOKEN);
+  return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+const ESTADOS_LEAD = ['nuevo', 'contactado', 'cotizado', 'cerrado', 'perdido'];
+
+const mapLead = (r) => ({
+  id: Number(r.ID), telefono: r.TELEFONO, nombre: r.NOMBRE, origen: r.ORIGEN,
+  estado: r.ESTADO, notas: r.NOTAS,
+  primerContacto: r.PRIMER_CONTACTO, ultimoContacto: r.ULTIMO_CONTACTO
+});
+
+// POST /api/crm/webhook — n8n registra un mensaje del chatbot.
+// Body: { telefono, texto, nombre?, direccion?: 'entrante'|'saliente' }
+// Crea el lead si el teléfono es nuevo; si ya existe actualiza ULTIMO_CONTACTO
+// (el nombre puesto a mano por un admin nunca se pisa).
+app.post('/api/crm/webhook', crearLimitador(300, 60_000), async (req, res) => {
+  if (!CRM_API_TOKEN) return res.status(503).json({ mensaje: 'CRM no configurado (falta CRM_API_TOKEN).' });
+  if (!tokenCrmValido(req)) return res.status(401).json({ mensaje: 'Token inválido.' });
+
+  const { telefono, nombre, texto, direccion } = req.body || {};
+  if (!telefono?.trim() || !texto?.trim()) {
+    return res.status(400).json({ mensaje: 'telefono y texto son obligatorios.' });
+  }
+  if (telefono.trim().length > 30 || (nombre?.trim().length ?? 0) > 200 || texto.trim().length > 4000) {
+    return res.status(400).json({ mensaje: 'Datos demasiado largos.' });
+  }
+  const dir = direccion === 'saliente' ? 'saliente' : 'entrante';
+
+  try {
+    const up = await pool.query(
+      `INSERT INTO "CRM_LEADS" ("ID","TELEFONO","NOMBRE")
+       VALUES (nextval('"SEQ_CRM_LEADS"'), $1, $2)
+       ON CONFLICT ("TELEFONO") DO UPDATE SET
+         "ULTIMO_CONTACTO" = now(),
+         "NOMBRE" = COALESCE("CRM_LEADS"."NOMBRE", EXCLUDED."NOMBRE")
+       RETURNING "ID"`,
+      [telefono.trim(), nombre?.trim() || null]);
+    const leadId = up.rows[0].ID;
+
+    await pool.query(
+      `INSERT INTO "CRM_MENSAJES" ("ID","LEAD_ID","DIRECCION","TEXTO")
+       VALUES (nextval('"SEQ_CRM_MENSAJES"'), $1, $2, $3)`,
+      [leadId, dir, texto.trim()]);
+
+    res.json({ mensaje: 'Registrado.', leadId: Number(leadId) });
+  } catch (err) {
+    console.error('crm webhook:', err);
+    res.status(500).json({ mensaje: 'Error interno al registrar el mensaje.' });
+  }
+});
+
+// GET /api/admin/crm/leads — lista con conteos de mensajes y tareas pendientes
+app.get('/api/admin/crm/leads', requireAuth, requireAdmin, async (_req, res) => {
+  const q = await pool.query(`
+    SELECT l.*,
+      (SELECT COUNT(*) FROM "CRM_MENSAJES" m WHERE m."LEAD_ID" = l."ID")                        AS mensajes,
+      (SELECT COUNT(*) FROM "CRM_TAREAS" t WHERE t."LEAD_ID" = l."ID" AND NOT t."COMPLETADA")   AS tareas_pendientes
+    FROM "CRM_LEADS" l ORDER BY l."ULTIMO_CONTACTO" DESC`);
+  res.json(q.rows.map(r => ({
+    ...mapLead(r), mensajes: Number(r.mensajes), tareasPendientes: Number(r.tareas_pendientes)
+  })));
+});
+
+// GET /api/admin/crm/leads/:id — detalle: lead + conversación + tareas
+app.get('/api/admin/crm/leads/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
+  const lead = await pool.query('SELECT * FROM "CRM_LEADS" WHERE "ID" = $1', [req.params.id]);
+  if (lead.rowCount === 0) return res.status(404).json({ mensaje: 'Lead no encontrado.' });
+
+  const mensajes = await pool.query(
+    'SELECT * FROM "CRM_MENSAJES" WHERE "LEAD_ID" = $1 ORDER BY "FECHA"', [req.params.id]);
+  const tareas = await pool.query(
+    'SELECT * FROM "CRM_TAREAS" WHERE "LEAD_ID" = $1 ORDER BY "COMPLETADA", "FECHA_LIMITE" NULLS LAST, "CREADA"',
+    [req.params.id]);
+
+  res.json({
+    ...mapLead(lead.rows[0]),
+    conversacion: mensajes.rows.map(m => ({
+      id: Number(m.ID), direccion: m.DIRECCION, texto: m.TEXTO, fecha: m.FECHA
+    })),
+    tareas: tareas.rows.map(t => ({
+      id: Number(t.ID), descripcion: t.DESCRIPCION, fechaLimite: t.FECHA_LIMITE,
+      completada: t.COMPLETADA, creada: t.CREADA
+    }))
+  });
+});
+
+// PUT /api/admin/crm/leads/:id — nombre, estado del pipeline y notas
+app.put('/api/admin/crm/leads/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
+  const { nombre, estado, notas } = req.body || {};
+  if (estado !== undefined && !ESTADOS_LEAD.includes(estado)) {
+    return res.status(400).json({ mensaje: 'Estado no válido.' });
+  }
+  if ((nombre?.trim().length ?? 0) > 200 || (notas?.trim().length ?? 0) > 4000) {
+    return res.status(400).json({ mensaje: 'Datos demasiado largos.' });
+  }
+  const q = await pool.query(
+    `UPDATE "CRM_LEADS" SET
+       "NOMBRE" = COALESCE($1, "NOMBRE"),
+       "ESTADO" = COALESCE($2, "ESTADO"),
+       "NOTAS"  = CASE WHEN $4 THEN $3 ELSE "NOTAS" END
+     WHERE "ID" = $5 RETURNING *`,
+    [nombre?.trim() || null, estado || null, notas?.trim() || null, notas !== undefined, req.params.id]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Lead no encontrado.' });
+  res.json(mapLead(q.rows[0]));
+});
+
+// POST /api/admin/crm/leads/:id/tareas — crear tarea de seguimiento
+app.post('/api/admin/crm/leads/:id(\\d+)/tareas', requireAuth, requireAdmin, async (req, res) => {
+  const { descripcion, fechaLimite } = req.body || {};
+  if (!descripcion?.trim()) return res.status(400).json({ mensaje: 'La descripción es obligatoria.' });
+  if (descripcion.trim().length > 500) return res.status(400).json({ mensaje: 'Máximo 500 caracteres.' });
+  const limite = fechaLimite ? new Date(fechaLimite) : null;
+  if (limite && isNaN(limite)) return res.status(400).json({ mensaje: 'Fecha límite no válida.' });
+
+  const lead = await pool.query('SELECT 1 FROM "CRM_LEADS" WHERE "ID" = $1', [req.params.id]);
+  if (lead.rowCount === 0) return res.status(404).json({ mensaje: 'Lead no encontrado.' });
+
+  const ins = await pool.query(
+    `INSERT INTO "CRM_TAREAS" ("ID","LEAD_ID","DESCRIPCION","FECHA_LIMITE")
+     VALUES (nextval('"SEQ_CRM_TAREAS"'), $1, $2, $3) RETURNING "ID"`,
+    [req.params.id, descripcion.trim(), limite]);
+  res.json({ mensaje: 'Tarea creada.', id: Number(ins.rows[0].ID) });
+});
+
+// PUT /api/admin/crm/tareas/:id — marcar completada / pendiente
+app.put('/api/admin/crm/tareas/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
+  const completada = req.body?.completada === true;
+  const q = await pool.query(
+    'UPDATE "CRM_TAREAS" SET "COMPLETADA" = $1 WHERE "ID" = $2', [completada, req.params.id]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Tarea no encontrada.' });
+  res.json({ mensaje: 'Tarea actualizada.' });
+});
+
+// DELETE /api/admin/crm/tareas/:id
+app.delete('/api/admin/crm/tareas/:id(\\d+)', requireAuth, requireAdmin, async (req, res) => {
+  const q = await pool.query('DELETE FROM "CRM_TAREAS" WHERE "ID" = $1', [req.params.id]);
+  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Tarea no encontrada.' });
+  res.status(204).end();
 });
 
 // ═════════════════════════ FRONTEND ═════════════════════════
