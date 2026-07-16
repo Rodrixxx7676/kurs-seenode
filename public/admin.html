@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=13" />
+  <link rel="stylesheet" href="/css/app.css?v=14" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
@@ -88,6 +88,10 @@
       <div class="cuenta-card glass-bubble">
         <h2>CRM — Chatbot de WhatsApp</h2>
         <p class="crm-sub">Leads registrados por el chatbot. Haz clic en un lead para ver la conversación y sus tareas.</p>
+        <div class="crm-toolbar">
+          <i class="ti ti-search"></i>
+          <input type="text" id="crmBuscar" maxlength="60" placeholder="Buscar por nombre o teléfono..." />
+        </div>
         <div class="crm-filtros" id="crmFiltros"></div>
         <div id="adminCrm" class="admin-lista"></div>
       </div>
@@ -116,6 +120,6 @@
 
   </div>
 
-  <script src="/js/kurs.js?v=13"></script>
+  <script src="/js/kurs.js?v=14"></script>
 </body>
 </html>

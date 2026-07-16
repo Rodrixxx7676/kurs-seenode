@@ -1833,3 +1833,29 @@ html { scroll-behavior: smooth; }
 .crm-resp-enviar:hover:not(:disabled) { background: rgba(37,211,102,0.3); transform: scale(1.06); }
 .crm-resp-enviar:disabled { opacity: 0.6; cursor: default; }
 .crm-resp-error { margin-top: 8px; }
+
+/* Buscador del CRM */
+.crm-toolbar { position: relative; margin-bottom: 12px; }
+.crm-toolbar i {
+  position: absolute; left: 15px; top: 50%; transform: translateY(-50%);
+  color: rgba(255,255,255,0.35); font-size: 15px; pointer-events: none;
+}
+.crm-toolbar input {
+  width: 100%;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  color: var(--white); font-family: var(--font-body); font-size: 13.5px;
+  padding: 11px 18px 11px 42px; outline: none; color-scheme: dark;
+}
+.crm-toolbar input:focus { border-color: rgba(255,255,255,0.3); }
+.crm-toolbar input::placeholder { color: rgba(255,255,255,0.28); }
+
+/* Contador en las pestañas del panel (leads nuevos, mensajes sin leer...) */
+.tab-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; margin-left: 7px;
+  border-radius: 999px;
+  background: rgba(37,211,102,0.22); color: #4ade80;
+  font-size: 10.5px; font-weight: 700; letter-spacing: 0;
+}

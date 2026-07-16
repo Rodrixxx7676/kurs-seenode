@@ -876,6 +876,18 @@
             '<p class="admin-stat-txt">' + c.t + '</p>' +
             (c.sub ? '<p class="admin-stat-sub">' + c.sub + '</p>' : '') + '</div></div>';
         }).join('');
+
+        // Contadores en las pestañas (como los badges de WhatsApp)
+        [['crm', s.leadsNuevos], ['mensajes', s.mensajesNoLeidos], ['proveedores', s.proveedoresPendientes]]
+          .forEach(function (par) {
+            const tab = document.querySelector('.cuenta-tab[data-tab="' + par[0] + '"]');
+            if (!tab) return;
+            let badge = tab.querySelector('.tab-badge');
+            if (par[1] > 0) {
+              if (!badge) { badge = document.createElement('span'); badge.className = 'tab-badge'; tab.appendChild(badge); }
+              badge.textContent = par[1];
+            } else if (badge) { badge.remove(); }
+          });
       }).catch(function () {});
     }
     cargarResumen();
@@ -942,6 +954,16 @@
         { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
     }
 
+    // Burbujas del chat (se reutiliza en la carga inicial y en la auto-actualización)
+    function htmlChat(conversacion) {
+      if (!conversacion.length) return '<p class="crm-chat-vacio">Sin mensajes registrados.</p>';
+      return conversacion.map(function (m) {
+        return '<div class="crm-msg crm-msg-' + (m.direccion === 'saliente' ? 'saliente' : 'entrante') + '">' +
+          esc(m.texto) + '<time>' + fechaHora(m.fecha) +
+          (m.direccion === 'saliente' ? ' · KURS' : '') + '</time></div>';
+      }).join('');
+    }
+
     function pintarFiltrosCrm() {
       const filtros = ['todos'].concat(ESTADOS_LEAD);
       $('crmFiltros').innerHTML = filtros.map(function (f) {
@@ -955,13 +977,27 @@
       });
     }
 
+    // Búsqueda por nombre o teléfono (sobre la lista ya cargada)
+    let crmBusqueda = '';
+    if ($('crmBuscar')) {
+      $('crmBuscar').addEventListener('input', function () {
+        crmBusqueda = this.value.trim().toLowerCase();
+        pintarCrm();
+      });
+    }
+
     function pintarCrm() {
       pintarFiltrosCrm();
-      const lista = crmFiltro === 'todos' ? crmLeads
+      let lista = crmFiltro === 'todos' ? crmLeads
         : crmLeads.filter(function (l) { return l.estado === crmFiltro; });
+      if (crmBusqueda) {
+        lista = lista.filter(function (l) {
+          return ((l.nombre || '') + ' ' + l.telefono).toLowerCase().includes(crmBusqueda);
+        });
+      }
       if (!lista.length) {
         $('adminCrm').innerHTML = vacio(crmLeads.length
-          ? 'No hay leads en este estado.'
+          ? (crmBusqueda ? 'Ningún lead coincide con la búsqueda.' : 'No hay leads en este estado.')
           : 'Aún no hay leads. Cuando alguien escriba al chatbot de WhatsApp aparecerá aquí.');
         return;
       }
@@ -1000,13 +1036,8 @@
     function cargarDetalleLead(id, det) {
       estadoCargando(det);
       api('/api/admin/crm/leads/' + id).then(function (r) { return r.json(); }).then(function (l) {
-        const chat = l.conversacion.length
-          ? l.conversacion.map(function (m) {
-              return '<div class="crm-msg crm-msg-' + (m.direccion === 'saliente' ? 'saliente' : 'entrante') + '">' +
-                esc(m.texto) + '<time>' + fechaHora(m.fecha) +
-                (m.direccion === 'saliente' ? ' · bot' : '') + '</time></div>';
-            }).join('')
-          : '<p class="crm-chat-vacio">Sin mensajes registrados.</p>';
+        const chat = htmlChat(l.conversacion);
+        det.dataset.nmsg = l.conversacion.length;
 
         const tareas = l.tareas.map(function (t) {
           const vencida = t.fechaLimite && !t.completada && new Date(t.fechaLimite) < new Date();
@@ -1187,6 +1218,25 @@
         pintarCrm();
       }).catch(function () { estadoError($('adminCrm'), cargarCrm); });
     }
+
+    // Auto-actualización: cada 20 s refresca la conversación de los leads
+    // abiertos (solo las burbujas del chat — no toca lo que estés escribiendo).
+    setInterval(function () {
+      if (!$('panel-crm') || !$('panel-crm').classList.contains('active')) return;
+      document.querySelectorAll('[data-detalle]').forEach(function (det) {
+        if (det.style.display === 'none' || !det.dataset.nmsg) return;
+        api('/api/admin/crm/leads/' + det.dataset.detalle)
+          .then(function (r) { return r.json(); })
+          .then(function (l) {
+            if (String(l.conversacion.length) === det.dataset.nmsg) return;
+            det.dataset.nmsg = l.conversacion.length;
+            const chatEl = det.querySelector('.crm-chat');
+            if (!chatEl) return;
+            chatEl.innerHTML = htmlChat(l.conversacion);
+            chatEl.scrollTop = chatEl.scrollHeight;
+          }).catch(function () {});
+      });
+    }, 20_000);
 
     // ── Mensajes ──
     function cargarAdminMensajes() {
