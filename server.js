@@ -1020,6 +1020,69 @@ app.delete('/api/admin/crm/tareas/:id(\\d+)', requireAuth, requireAdmin, async (
   res.status(204).end();
 });
 
+// ── Responder por WhatsApp (Cloud API de Meta) ──────────────────────────────
+// El token permanente y el Phone Number ID viven en variables de entorno;
+// el navegador nunca los ve. Sin configurar, el botón de responder avisa 503.
+const WHATSAPP_TOKEN    = process.env.WHATSAPP_TOKEN || '';
+const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID || '';
+
+// POST /api/admin/crm/leads/:id/responder — envía el texto al WhatsApp del
+// lead y lo registra en la conversación como mensaje saliente.
+app.post('/api/admin/crm/leads/:id(\\d+)/responder', requireAuth, requireAdmin, async (req, res) => {
+  if (!WHATSAPP_TOKEN || !WHATSAPP_PHONE_ID) {
+    return res.status(503).json({ mensaje: 'WhatsApp no configurado: faltan WHATSAPP_TOKEN y WHATSAPP_PHONE_ID en el servidor.' });
+  }
+  const texto = (req.body?.texto || '').trim();
+  if (!texto) return res.status(400).json({ mensaje: 'Escribe un mensaje antes de enviar.' });
+  if (texto.length > 4000) return res.status(400).json({ mensaje: 'Máximo 4000 caracteres.' });
+
+  const lead = await pool.query('SELECT "TELEFONO" FROM "CRM_LEADS" WHERE "ID" = $1', [req.params.id]);
+  if (lead.rowCount === 0) return res.status(404).json({ mensaje: 'Lead no encontrado.' });
+
+  // La Cloud API espera solo dígitos con código de país (sin +, espacios ni guiones)
+  const destinatario = lead.rows[0].TELEFONO.replace(/\D/g, '');
+
+  try {
+    const resp = await fetch('https://graph.facebook.com/v20.0/' + WHATSAPP_PHONE_ID + '/messages', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + WHATSAPP_TOKEN, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        to: destinatario,
+        type: 'text',
+        text: { body: texto }
+      }),
+      signal: (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) ? AbortSignal.timeout(15_000) : undefined
+    });
+    const data = await resp.json().catch(function () { return {}; });
+
+    if (!resp.ok) {
+      console.error('whatsapp api:', resp.status, JSON.stringify(data));
+      // Código 131047: pasaron más de 24 h desde el último mensaje del cliente;
+      // Meta solo permite reabrir la conversación con una plantilla aprobada.
+      const detalle = data?.error?.message || '';
+      const fueraVentana = data?.error?.code === 131047 ||
+        JSON.stringify(data).includes('131047') || /re-engagement/i.test(detalle);
+      return res.status(502).json({
+        mensaje: fueraVentana
+          ? 'Pasaron más de 24 h desde el último mensaje del cliente. WhatsApp solo permite responder con una plantilla aprobada; pídele que escriba de nuevo o usa una plantilla desde Meta.'
+          : 'WhatsApp rechazó el mensaje.' + (detalle ? ' Detalle: ' + detalle : '')
+      });
+    }
+
+    await pool.query(
+      `INSERT INTO "CRM_MENSAJES" ("ID","LEAD_ID","DIRECCION","TEXTO")
+       VALUES (nextval('"SEQ_CRM_MENSAJES"'), $1, 'saliente', $2)`,
+      [req.params.id, texto]);
+    await pool.query('UPDATE "CRM_LEADS" SET "ULTIMO_CONTACTO" = now() WHERE "ID" = $1', [req.params.id]);
+
+    res.json({ mensaje: 'Enviado por WhatsApp.' });
+  } catch (err) {
+    console.error('whatsapp responder:', err.message);
+    res.status(502).json({ mensaje: 'No se pudo contactar a la API de WhatsApp. Inténtalo de nuevo.' });
+  }
+});
+
 // ═════════════════════════ FRONTEND ═════════════════════════
 // extensions: ['html'] → /login sirve login.html, /contacto sirve contacto.html, etc.
 // Los HTML no se cachean (para que los deploys se vean al instante);

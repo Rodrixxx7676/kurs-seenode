@@ -1022,6 +1022,13 @@
 
         det.innerHTML =
           '<div class="crm-chat">' + chat + '</div>' +
+          '<div class="crm-responder">' +
+            '<input type="text" class="crm-resp-txt" maxlength="4000" ' +
+              'placeholder="Responder por WhatsApp...">' +
+            '<button class="crm-resp-enviar glass-bubble-btn" data-responder="' + l.id + '" ' +
+              'aria-label="Enviar por WhatsApp"><i class="ti ti-send"></i></button>' +
+          '</div>' +
+          '<p class="login-error crm-resp-error" style="display:none"></p>' +
           '<div class="admin-item-acciones">' +
             '<label>Estado:</label>' +
             '<select class="admin-estado-select" data-leadestado="' + l.id + '">' +
@@ -1049,6 +1056,45 @@
                 '<i class="ti ti-plus"></i> Agregar</button>' +
             '</div>' +
           '</div>';
+
+        // El chat abre mostrando lo más reciente, como WhatsApp
+        const chatEl = det.querySelector('.crm-chat');
+        chatEl.scrollTop = chatEl.scrollHeight;
+
+        // Responder por WhatsApp (Cloud API): envía y recarga la conversación
+        const respTxt = det.querySelector('.crm-resp-txt');
+        const respBtn = det.querySelector('[data-responder]');
+        const respErr = det.querySelector('.crm-resp-error');
+        async function enviarRespuesta() {
+          const texto = respTxt.value.trim();
+          if (!texto) return;
+          respErr.style.display = 'none';
+          respBtn.disabled = true;
+          respTxt.disabled = true;
+          respBtn.innerHTML = '<i class="ti ti-loader-2 spin"></i>';
+          try {
+            const resp = await api('/api/admin/crm/leads/' + l.id + '/responder', {
+              method: 'POST', body: JSON.stringify({ texto: texto })
+            });
+            const data = await resp.json().catch(function () { return {}; });
+            if (resp.ok) {
+              cargarDetalleLead(l.id, det);   // re-pinta el chat con el mensaje enviado
+              return;
+            }
+            respErr.textContent = data.mensaje || 'No se pudo enviar el mensaje.';
+            respErr.style.display = '';
+          } catch {
+            respErr.textContent = 'No se pudo conectar con el servidor.';
+            respErr.style.display = '';
+          }
+          respBtn.disabled = false;
+          respTxt.disabled = false;
+          respBtn.innerHTML = '<i class="ti ti-send"></i>';
+        }
+        respBtn.addEventListener('click', enviarRespuesta);
+        respTxt.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter') { e.preventDefault(); enviarRespuesta(); }
+        });
 
         // Cambiar estado del pipeline (actualiza la etiqueta sin recargar la lista)
         det.querySelector('[data-leadestado]').addEventListener('change', async function () {

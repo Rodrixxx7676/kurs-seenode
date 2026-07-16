@@ -1810,3 +1810,26 @@ html { scroll-behavior: smooth; }
   .crm-msg { max-width: 92%; }
   .crm-tarea-add { flex-direction: column; }
 }
+
+/* Caja de respuesta por WhatsApp en el chat del CRM */
+.crm-responder { display: flex; gap: 8px; margin-top: 10px; }
+.crm-responder .crm-resp-txt {
+  flex: 1;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 999px;
+  color: var(--white); font-family: var(--font-body); font-size: 13.5px;
+  padding: 11px 18px; outline: none; color-scheme: dark;
+}
+.crm-responder .crm-resp-txt:focus { border-color: rgba(37,211,102,0.45); }
+.crm-responder .crm-resp-txt::placeholder { color: rgba(255,255,255,0.28); }
+.crm-resp-enviar {
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: rgba(37,211,102,0.18); color: #4ade80; font-size: 17px;
+  transition: background 0.2s, transform 0.15s;
+  flex-shrink: 0;
+}
+.crm-resp-enviar:hover:not(:disabled) { background: rgba(37,211,102,0.3); transform: scale(1.06); }
+.crm-resp-enviar:disabled { opacity: 0.6; cursor: default; }
+.crm-resp-error { margin-top: 8px; }
