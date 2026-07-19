@@ -151,21 +151,34 @@
       return 'https://wa.me/' + WSP + '?text=' + encodeURIComponent(texto);
     };
 
+    // KOSMO usa la imagen del personaje (recortada a la cabeza por CSS). Si la
+    // imagen aún no existe en /images/kosmo.png, se mantiene el ícono de respaldo.
+    function montarKosmo(cont) {
+      if (!cont) return;
+      const img = document.createElement('img');
+      img.className = 'kbot-kosmo-img';
+      img.alt = 'KOSMO';
+      img.addEventListener('load', function () { cont.classList.add('kbot-con-img'); });
+      img.src = '/images/kosmo.png';
+      cont.insertBefore(img, cont.firstChild);
+    }
+
     const lanzador = document.createElement('button');
     lanzador.className = 'kbot-lanzador';
-    lanzador.setAttribute('aria-label', 'Abrir el asistente de KURS');
-    lanzador.innerHTML = '<i class="ti ti-message-chatbot"></i><span class="kbot-punto"></span>';
+    lanzador.setAttribute('aria-label', 'Abrir a KOSMO, tu amigo virtual');
+    lanzador.innerHTML =
+      '<i class="ti ti-message-chatbot kbot-fallback"></i><span class="kbot-punto"></span>';
 
     const win = document.createElement('div');
     win.className = 'kbot-win';
     win.setAttribute('role', 'dialog');
-    win.setAttribute('aria-label', 'Asistente de KURS');
+    win.setAttribute('aria-label', 'KOSMO — tu amigo virtual');
     win.innerHTML =
       '<div class="kbot-head">' +
         '<div class="kbot-head-info">' +
-          '<span class="kbot-avatar"><i class="ti ti-robot"></i></span>' +
-          '<div><strong>Asistente KURS</strong>' +
-          '<span class="kbot-estado"><i class="ti ti-point-filled"></i> En línea</span></div>' +
+          '<span class="kbot-avatar"><i class="ti ti-robot kbot-fallback"></i></span>' +
+          '<div><strong>KOSMO</strong>' +
+          '<span class="kbot-estado"><i class="ti ti-point-filled"></i> Tu amigo virtual · En línea</span></div>' +
         '</div>' +
         '<button class="kbot-cerrar" aria-label="Cerrar el chat">&times;</button>' +
       '</div>' +
@@ -179,6 +192,8 @@
 
     document.body.appendChild(lanzador);
     document.body.appendChild(win);
+    montarKosmo(lanzador);
+    montarKosmo(win.querySelector('.kbot-avatar'));
 
     const msgs = win.querySelector('#kbotMsgs');
     const chipsBox = win.querySelector('#kbotChips');
@@ -289,8 +304,8 @@
     function iniciar() {
       if (iniciado) return;
       iniciado = true;
-      responder('¡Hola! 👋 Soy el asistente de <strong>KURS</strong>. ' +
-        'Cuéntame qué necesitas o elige una opción:');
+      responder('¡Hola! 👋 Soy <strong>KOSMO</strong> 🐾, tu amigo virtual de KURS. ' +
+        'Estoy para ayudarte y acompañarte. ¿Qué necesitas hoy?');
     }
 
     form.addEventListener('submit', function (e) {

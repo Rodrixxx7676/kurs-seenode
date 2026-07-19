@@ -605,6 +605,20 @@ h1, h2, h3,
   .nav-links { display: none; }
 }
 
+/* Móvil: la tarjeta CTA y su botón se rompían en pantallas angostas
+   (el texto del pill se partía en dos líneas). Se compactan para que
+   "Contáctanos hoy" quepa en una sola línea. */
+@media (max-width: 600px) {
+  .cta-section { padding: 0 16px 90px; }
+  .cta-card { padding: 48px 22px; }
+  .cta-card h2 { font-size: clamp(24px, 7.5vw, 34px); }
+  .cta-card p { font-size: 15px; margin-bottom: 32px; }
+  .btn-primary.large {
+    padding: 15px 26px; font-size: 11px; letter-spacing: 0.06em;
+    max-width: 100%; white-space: nowrap;
+  }
+}
+
 /* ===== NAV AUTH (Iniciar sesión / Registrarse) ===== */
 .nav-auth { display: flex; align-items: center; gap: 8px; justify-content: flex-end; }
 
@@ -1480,7 +1494,7 @@ html { scroll-behavior: smooth; }
 .kbot-lanzador {
   position: fixed; bottom: 22px; right: 22px; z-index: 160;
   width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer;
-  display: grid; place-items: center;
+  display: grid; place-items: center; overflow: hidden;
   background: linear-gradient(135deg, #e8e8f0, #999aaa);
   color: #0a0a0a; font-size: 30px;
   box-shadow: 0 8px 28px rgba(0,0,0,0.45);
@@ -1522,7 +1536,16 @@ html { scroll-behavior: smooth; }
 .kbot-avatar {
   width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
   background: linear-gradient(135deg, #e8e8f0, #999aaa); color: #0a0a0a; font-size: 20px;
+  overflow: hidden; position: relative;
 }
+/* KOSMO: imagen del personaje recortada a la cabeza (con respaldo al ícono). */
+.kbot-kosmo-img { display: none; }
+.kbot-con-img > .kbot-kosmo-img {
+  display: block; position: absolute; inset: 0;
+  width: 100%; height: 100%; object-fit: cover;
+  object-position: 50% 30%; transform: scale(1.4);
+}
+.kbot-con-img > .kbot-fallback { display: none; }
 .kbot-head strong {
   display: block; color: var(--white); font-family: var(--font-display);
   font-size: 0.92rem; letter-spacing: 0.04em;
