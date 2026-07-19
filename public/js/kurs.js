@@ -143,7 +143,7 @@
   // ── Botón flotante de WhatsApp (en todo el sitio salvo el panel admin) ────
   if (!document.querySelector('.admin-wrap')) {
     const wsp = document.createElement('a');
-    wsp.href = 'https://wa.me/51949238917?text=' +
+    wsp.href = 'https://wa.me/51997315880?text=' +
       encodeURIComponent('¡Hola KURS! Quiero información sobre sus servicios.');
     wsp.className = 'wsp-flotante';
     wsp.target = '_blank';
@@ -360,97 +360,6 @@
     enviarConEnter(document.querySelector('.login-fields'), loginBtn);
   }
 
-  // ═════════════ REGISTRO (port de Registro.cs) ═════════════
-  const registroBtn = $('registroBtn');
-  if (registroBtn) {
-    const htmlNormal = registroBtn.innerHTML;
-    const pw = $('password');
-    const reglas = $('pwRules');
-
-    // Reglas de contraseña en vivo (igual que el Razor)
-    const tieneMayuscula = function (v) { return /[A-Z]/.test(v); };
-    const tieneNumero    = function (v) { return /\d/.test(v); };
-    const tieneEspecial  = function (v) { return /[!@#$%^&*()_+\-=\[\]{}|;':",./<>?]/.test(v); };
-    const pwSegura = function (v) {
-      return v.length >= 7 && tieneMayuscula(v) && tieneNumero(v) && tieneEspecial(v);
-    };
-
-    pw.addEventListener('input', function () {
-      const v = pw.value;
-      reglas.style.display = v ? '' : 'none';
-      [['ruleLen', v.length >= 7], ['ruleMayus', tieneMayuscula(v)],
-       ['ruleNum', tieneNumero(v)], ['ruleEsp', tieneEspecial(v)]].forEach(function (par) {
-        const el = $(par[0]);
-        el.className = 'pw-rule ' + (par[1] ? 'ok' : 'fail');
-        el.querySelector('i').className = 'ti ' + (par[1] ? 'ti-circle-check' : 'ti-circle-x');
-      });
-    });
-
-    registroBtn.addEventListener('click', async function () {
-      const error = $('registroError');
-      error.style.display = 'none';
-
-      const nombre = $('nombre').value.trim();
-      const empresa = $('empresa').value.trim();
-      const email = $('email').value.trim();
-      const password = pw.value;
-      const confirm = $('confirm').value;
-
-      if (!nombre) { error.textContent = 'Ingresa tu nombre completo.'; error.style.display = ''; return; }
-      if (!email || !emailValido(email)) {
-        error.textContent = 'Ingresa un correo electrónico válido.'; error.style.display = ''; return;
-      }
-      if (!pwSegura(password)) {
-        error.textContent = 'La contraseña debe tener mínimo 7 caracteres, una mayúscula, un número y un carácter especial.';
-        error.style.display = ''; return;
-      }
-      if (password !== confirm) {
-        error.textContent = 'Las contraseñas no coinciden.'; error.style.display = ''; return;
-      }
-
-      setCargando(registroBtn, true, 'Creando cuenta...', htmlNormal);
-      try {
-        const captcha = await recaptchaToken('registro');
-        const resp = await fetch('/api/auth/registro', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ nombre: nombre, email: email, password: password, empresa: empresa || null, recaptchaToken: captcha })
-        });
-
-        if (resp.ok) {
-          registroBtn.style.display = 'none';
-          $('registroOk').style.display = '';
-          // Auto-login: el cliente entra directo a su panel sin reescribir credenciales
-          try {
-            const loginResp = await fetch('/api/auth/login', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: email, password: password })
-            });
-            if (loginResp.ok) {
-              guardarSesion(await loginResp.json());
-              setTimeout(function () { window.location.href = '/cuenta'; }, 1200);
-              return;
-            }
-          } catch { /* si falla, cae al login manual */ }
-          setTimeout(function () { window.location.href = '/login'; }, 1500);
-          return;
-        }
-
-        error.textContent = resp.status === 409
-          ? 'Ya existe una cuenta con ese correo.'
-          : 'Error al crear la cuenta. Inténtalo de nuevo.';
-        error.style.display = '';
-      } catch {
-        error.textContent = 'No se pudo conectar con el servidor.';
-        error.style.display = '';
-      } finally {
-        if (registroBtn.style.display !== 'none') setCargando(registroBtn, false, '', htmlNormal);
-      }
-    });
-    enviarConEnter(document.querySelector('.login-fields'), registroBtn);
-  }
-
   // ═════════════ CONTACTO ═════════════
   const contactoBtn = $('contactoBtn');
   if (contactoBtn) {
@@ -517,60 +426,6 @@
     enviarConEnter($('contactoForm'), contactoBtn);
   }
 
-  // ═════════════ PROVEEDORES ═════════════
-  // Guarda la solicitud vía POST /api/proveedores (tabla PROVEEDORES).
-  const provBtn = $('provBtn');
-  if (provBtn) {
-    const htmlNormal = provBtn.innerHTML;
-    provBtn.addEventListener('click', async function () {
-      const error = $('provError');
-      error.style.display = 'none';
-
-      const razonSocial = $('razonSocial').value.trim();
-      const ruc = $('ruc').value.trim();
-      const representante = $('representante').value.trim();
-      const email = $('provEmail').value.trim();
-      const telefono = $('telefono').value.trim();
-      const categoria = $('categoria').value;
-      const descripcion = $('descripcion').value.trim();
-      const web = $('web').value.trim();
-
-      function fallo(msg) { error.textContent = msg; error.style.display = ''; }
-
-      if (!razonSocial) return fallo('Ingresa la razón social.');
-      if (ruc.length !== 11) return fallo('El RUC debe tener 11 dígitos.');
-      if (!representante) return fallo('Ingresa el nombre del representante legal.');
-      if (!email || !emailValido(email)) return fallo('Ingresa un correo corporativo válido.');
-      if (!telefono) return fallo('Ingresa un teléfono de contacto.');
-      if (!categoria) return fallo('Selecciona una categoría.');
-
-      setCargando(provBtn, true, 'Enviando...', htmlNormal);
-      try {
-        const resp = await fetch('/api/proveedores', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razonSocial: razonSocial, ruc: ruc, representante: representante,
-            email: email, telefono: telefono, categoria: categoria,
-            descripcion: descripcion, web: web, recaptchaToken: await recaptchaToken('proveedores')
-          })
-        });
-
-        if (resp.ok) {
-          $('provForm').style.display = 'none';
-          $('provOk').style.display = '';
-        } else {
-          const data = await resp.json().catch(function () { return {}; });
-          fallo(data.mensaje || 'Ocurrió un problema al enviar. Inténtalo de nuevo.');
-        }
-      } catch {
-        fallo('No se pudo conectar con el servidor. Inténtalo de nuevo.');
-      } finally {
-        setCargando(provBtn, false, '', htmlNormal);
-      }
-    });
-    enviarConEnter($('provForm'), provBtn);
-  }
 
   // ═════════════ MI CUENTA (/cuenta) ═════════════
   // :not(.admin-wrap) → el panel de admin reutiliza clases pero tiene su propio bloque
@@ -868,7 +723,6 @@
           { i: 'ti-brand-whatsapp',  n: s.leadsNuevos ?? 0,      t: 'Leads nuevos',
             sub: (s.leads ?? 0) + ' en total · ' + (s.tareasPendientes ?? 0) + ' tareas pendientes' },
           { i: 'ti-mail',            n: s.mensajesNoLeidos,      t: 'Mensajes sin leer',    sub: s.mensajes + ' en total' },
-          { i: 'ti-truck-delivery',  n: s.proveedoresPendientes, t: 'Proveedores por revisar', sub: s.proveedores + ' en total' },
           { i: 'ti-users',           n: s.clientes,              t: 'Clientes activos',     sub: '' }
         ].map(function (c) {
           return '<div class="admin-stat glass-bubble"><i class="ti ' + c.i + '"></i>' +
@@ -878,7 +732,7 @@
         }).join('');
 
         // Contadores en las pestañas (como los badges de WhatsApp)
-        [['crm', s.leadsNuevos], ['mensajes', s.mensajesNoLeidos], ['proveedores', s.proveedoresPendientes]]
+        [['crm', s.leadsNuevos], ['mensajes', s.mensajesNoLeidos]]
           .forEach(function (par) {
             const tab = document.querySelector('.cuenta-tab[data-tab="' + par[0] + '"]');
             if (!tab) return;
@@ -1271,33 +1125,6 @@
       }).catch(function () { estadoError($('adminMensajes'), cargarAdminMensajes); });
     }
 
-    // ── Proveedores ──
-    const ESTADOS_PROV = ['pendiente', 'aprobado', 'rechazado'];
-    const ETIQ_PROV = { pendiente: 'Pendiente', aprobado: 'Aprobado', rechazado: 'Rechazado' };
-    const CLASE_PROV = { pendiente: 'estado-solicitado', aprobado: 'estado-entregado', rechazado: 'estado-cancelado' };
-    function cargarAdminProveedores() {
-      estadoCargando($('adminProveedores'));
-      api('/api/proveedores').then(function (r) { return r.json(); }).then(function (lista) {
-        if (!lista.length) { $('adminProveedores').innerHTML = vacio('No hay solicitudes de proveedores.'); return; }
-        $('adminProveedores').innerHTML = lista.map(function (p) {
-          return '<div class="admin-item glass-bubble">' +
-            '<div class="admin-item-top"><h3>' + esc(p.razonSocial) + '</h3>' +
-              '<span class="proyecto-estado ' + (CLASE_PROV[p.estado] || '') + '">' + (ETIQ_PROV[p.estado] || p.estado) + '</span></div>' +
-            '<p class="admin-item-meta"><i class="ti ti-id-badge"></i> RUC ' + esc(p.ruc) +
-              ' · <i class="ti ti-user"></i> ' + esc(p.representante) + '</p>' +
-            '<p class="admin-item-meta"><i class="ti ti-mail"></i> ' + esc(p.email) +
-              ' · <i class="ti ti-phone"></i> ' + esc(p.telefono) +
-              ' · <i class="ti ti-category"></i> ' + esc(p.categoria) + '</p>' +
-            (p.descripcion ? '<p class="admin-item-desc">' + esc(p.descripcion) + '</p>' : '') +
-            (p.web ? '<p class="admin-item-meta"><i class="ti ti-world"></i> <a href="' + esc(p.web) + '" target="_blank" rel="noopener">' + esc(p.web) + '</a></p>' : '') +
-            '<div class="admin-item-acciones"><label>Estado:</label>' +
-              selectEstado('prov', p.id, p.estado, ESTADOS_PROV, ETIQ_PROV) + '</div>' +
-          '</div>';
-        }).join('');
-        conectarSelects('prov', '/api/admin/proveedores/', cargarAdminProveedores);
-      }).catch(function () { estadoError($('adminProveedores'), cargarAdminProveedores); });
-    }
-
     // ── Clientes ──
     function cargarAdminClientes() {
       estadoCargando($('adminClientes'));
@@ -1342,7 +1169,6 @@
     cargarAdminProyectos();
     cargarCrm();
     cargarAdminMensajes();
-    cargarAdminProveedores();
     cargarAdminClientes();
   }
 })();

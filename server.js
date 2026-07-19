@@ -327,8 +327,6 @@ function crearLimitador(max, ventanaMs, mensaje) {
   };
 }
 app.use('/api/', crearLimitador(120, 60_000));                       // general: 120/min por IP
-const limiteRegistro = crearLimitador(5, 60_000,
-  'Demasiados registros desde esta conexión. Espera un minuto.');    // anti-creación masiva
 
 // ── Política de contraseñas (misma que valida el frontend) ──────────────────
 function passwordFuerte(p) {
@@ -351,48 +349,11 @@ app.get('/api/config', (_req, res) => {
 
 // ═════════════════════════ AUTH ═════════════════════════
 
-// POST /api/auth/registro
-app.post('/api/auth/registro', limiteRegistro, async (req, res) => {
-  const { nombre, email, password, empresa } = req.body || {};
-  if (!nombre?.trim() || !email?.trim() || !password) {
-    return res.status(400).json({ mensaje: 'Nombre, correo y contraseña son obligatorios.' });
-  }
-  if (!EMAIL_RE.test(email.trim()) || nombre.trim().length > 200 ||
-      email.trim().length > 320 || (empresa?.trim().length ?? 0) > 200) {
-    return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
-  }
-  if (!passwordFuerte(password)) {
-    return res.status(400).json({ mensaje: MSG_PASSWORD });
-  }
-  if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
-    return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
-  }
-
-  const emailNorm = email.trim().toLowerCase();
-  try {
-    const existe = await pool.query('SELECT 1 FROM "CLIENTES" WHERE "EMAIL" = $1', [emailNorm]);
-    if (existe.rowCount > 0) {
-      return res.status(409).json({ mensaje: 'Ya existe una cuenta con ese correo electrónico.' });
-    }
-
-    const hash = await bcrypt.hash(password, 11);
-    const ins = await pool.query(
-      `INSERT INTO "CLIENTES" ("ID","NOMBRE","EMAIL","EMPRESA","PASSWORD_HASH","FECHA_REGISTRO","ACTIVO","NIVEL")
-       VALUES (nextval('"SEQ_CLIENTES"'), $1, $2, $3, $4, now(), true, 2)
-       RETURNING "ID"`,
-      [nombre.trim(), emailNorm, empresa?.trim() || null, hash]
-    );
-
-    res.json({ mensaje: 'Cuenta creada correctamente.', id: Number(ins.rows[0].ID) });
-  } catch (err) {
-    // 23505 = unique_violation: dos registros simultáneos con el mismo correo
-    // pasaron el "¿existe?" a la vez; el índice UNIQUE atrapa al segundo.
-    if (err.code === '23505') {
-      return res.status(409).json({ mensaje: 'Ya existe una cuenta con ese correo electrónico.' });
-    }
-    console.error('registro:', err);
-    res.status(500).json({ mensaje: 'Error interno al crear la cuenta.' });
-  }
+// POST /api/auth/registro — DESHABILITADO: el registro de cuentas de cliente
+// está cerrado. El acceso al panel/CRM queda solo para cuentas ya existentes
+// (admin) vía /login. Se mantiene la ruta para responder con un 403 claro.
+app.post('/api/auth/registro', (_req, res) => {
+  res.status(403).json({ mensaje: 'El registro de cuentas está deshabilitado.' });
 });
 
 // POST /api/auth/login
@@ -663,59 +624,6 @@ app.put('/api/cuenta/proyectos/:id(\\d+)/cancelar', requireAuth, async (req, res
   res.json({ mensaje: 'Solicitud cancelada.' });
 });
 
-// ═════════════════════════ PROVEEDORES ═════════════════════════
-
-// POST /api/proveedores — público, guarda la solicitud del portal de proveedores
-app.post('/api/proveedores', async (req, res) => {
-  const { razonSocial, ruc, representante, email, telefono, categoria, descripcion, web } = req.body || {};
-
-  if (!razonSocial?.trim() || !representante?.trim() || !email?.trim() ||
-      !telefono?.trim() || !categoria?.trim()) {
-    return res.status(400).json({ mensaje: 'Completa todos los campos obligatorios.' });
-  }
-  if (!/^\d{11}$/.test(ruc?.trim() || '')) {
-    return res.status(400).json({ mensaje: 'El RUC debe tener 11 dígitos.' });
-  }
-  if (!EMAIL_RE.test(email.trim()) || razonSocial.trim().length > 200 ||
-      representante.trim().length > 200 || email.trim().length > 320 ||
-      telefono.trim().length > 30 || categoria.trim().length > 100 ||
-      (descripcion?.trim().length ?? 0) > 4000 || (web?.trim().length ?? 0) > 300) {
-    return res.status(400).json({ mensaje: 'Datos inválidos o demasiado largos.' });
-  }
-  // Solo URLs http(s): el enlace se muestra clicable en el panel de admin,
-  // y un esquema javascript: sería ejecutable en el navegador del administrador.
-  if (web?.trim() && !/^https?:\/\//i.test(web.trim())) {
-    return res.status(400).json({ mensaje: 'La página web debe empezar con http:// o https://.' });
-  }
-  if (!(await verificarRecaptcha(req.body?.recaptchaToken)).ok) {
-    return res.status(400).json({ mensaje: 'Verificación anti-robot fallida. Recarga la página e inténtalo de nuevo.' });
-  }
-
-  try {
-    await pool.query(
-      `INSERT INTO "PROVEEDORES"
-         ("ID","RAZON_SOCIAL","RUC","REPRESENTANTE","EMAIL","TELEFONO","CATEGORIA","DESCRIPCION","WEB")
-       VALUES (nextval('"SEQ_PROVEEDORES"'), $1, $2, $3, $4, $5, $6, $7, $8)`,
-      [razonSocial.trim(), ruc.trim(), representante.trim(), email.trim(),
-       telefono.trim(), categoria.trim(), descripcion?.trim() || null, web?.trim() || null]
-    );
-    res.json({ mensaje: 'Solicitud recibida. Nos pondremos en contacto en los próximos 3 días hábiles.' });
-  } catch (err) {
-    console.error('proveedores:', err);
-    res.status(500).json({ mensaje: 'Error interno al guardar la solicitud.' });
-  }
-});
-
-// GET /api/proveedores — lista para uso administrativo
-app.get('/api/proveedores', requireAuth, requireAdmin, async (_req, res) => {
-  const q = await pool.query('SELECT * FROM "PROVEEDORES" ORDER BY "FECHA_SOLICITUD" DESC');
-  res.json(q.rows.map(r => ({
-    id: Number(r.ID), razonSocial: r.RAZON_SOCIAL, ruc: r.RUC, representante: r.REPRESENTANTE,
-    email: r.EMAIL, telefono: r.TELEFONO, categoria: r.CATEGORIA, descripcion: r.DESCRIPCION,
-    web: r.WEB, fechaSolicitud: r.FECHA_SOLICITUD, estado: r.ESTADO
-  })));
-});
-
 // ═════════════════════════ CLIENTES (CRUD, requiere JWT) ═════════════════════════
 
 app.get('/api/clientes', requireAuth, requireAdmin, async (_req, res) => {
@@ -791,7 +699,6 @@ app.delete('/api/clientes/:id(\\d+)', requireAuth, requireAdmin, async (req, res
 
 // Estados válidos por entidad → evita que se guarde cualquier texto
 const ESTADOS_PROYECTO   = ['solicitado', 'en_progreso', 'entregado', 'cancelado'];
-const ESTADOS_PROVEEDOR  = ['pendiente', 'aprobado', 'rechazado'];
 
 // GET /api/admin/resumen — conteos para el dashboard
 app.get('/api/admin/resumen', requireAuth, requireAdmin, async (_req, res) => {
@@ -802,8 +709,6 @@ app.get('/api/admin/resumen', requireAuth, requireAdmin, async (_req, res) => {
       (SELECT COUNT(*) FROM "MENSAJES_CONTACTO" WHERE "LEIDO" = false)     AS mensajes_no_leidos,
       (SELECT COUNT(*) FROM "PROYECTOS")                                   AS proyectos,
       (SELECT COUNT(*) FROM "PROYECTOS" WHERE "ESTADO" = 'solicitado')     AS proyectos_nuevos,
-      (SELECT COUNT(*) FROM "PROVEEDORES")                                 AS proveedores,
-      (SELECT COUNT(*) FROM "PROVEEDORES" WHERE "ESTADO" = 'pendiente')    AS proveedores_pendientes,
       (SELECT COUNT(*) FROM "CRM_LEADS")                                   AS leads,
       (SELECT COUNT(*) FROM "CRM_LEADS" WHERE "ESTADO" = 'nuevo')          AS leads_nuevos,
       (SELECT COUNT(*) FROM "CRM_TAREAS" WHERE NOT "COMPLETADA")           AS tareas_pendientes
@@ -813,7 +718,6 @@ app.get('/api/admin/resumen', requireAuth, requireAdmin, async (_req, res) => {
     clientes: Number(r.clientes),
     mensajes: Number(r.mensajes), mensajesNoLeidos: Number(r.mensajes_no_leidos),
     proyectos: Number(r.proyectos), proyectosNuevos: Number(r.proyectos_nuevos),
-    proveedores: Number(r.proveedores), proveedoresPendientes: Number(r.proveedores_pendientes),
     leads: Number(r.leads), leadsNuevos: Number(r.leads_nuevos),
     tareasPendientes: Number(r.tareas_pendientes)
   });
@@ -854,18 +758,6 @@ app.put('/api/admin/proyectos/:id(\\d+)/nota', requireAuth, requireAdmin, async 
     'UPDATE "PROYECTOS" SET "NOTA_ADMIN" = $1 WHERE "ID" = $2', [nota || null, req.params.id]);
   if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proyecto no encontrado.' });
   res.json({ mensaje: 'Nota guardada.' });
-});
-
-// PUT /api/admin/proveedores/:id/estado — aprobar o rechazar un proveedor
-app.put('/api/admin/proveedores/:id(\\d+)/estado', requireAuth, requireAdmin, async (req, res) => {
-  const estado = (req.body?.estado || '').trim();
-  if (!ESTADOS_PROVEEDOR.includes(estado)) {
-    return res.status(400).json({ mensaje: 'Estado no válido.' });
-  }
-  const q = await pool.query(
-    'UPDATE "PROVEEDORES" SET "ESTADO" = $1 WHERE "ID" = $2', [estado, req.params.id]);
-  if (q.rowCount === 0) return res.status(404).json({ mensaje: 'Proveedor no encontrado.' });
-  res.json({ mensaje: 'Estado actualizado.', estado });
 });
 
 // ═════════════════════════ CRM WHATSAPP ═════════════════════════

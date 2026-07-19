@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=14" />
+  <link rel="stylesheet" href="/css/app.css?v=15" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
@@ -47,10 +47,7 @@
       <li><a href="/"><i class="ti ti-home"></i> Inicio</a></li>
       <li><a href="/cuenta"><i class="ti ti-user"></i> Mi cuenta</a></li>
     </ul>
-    <div class="nav-auth">
-      <a href="/login" class="btn-login"><i class="ti ti-login"></i> Iniciar sesión</a>
-      <a href="/registro" class="btn-register glass-bubble-btn"><i class="ti ti-user-plus"></i> Registrarse</a>
-    </div>
+    <div class="nav-auth"></div>
   </nav>
 
   <div class="cuenta-wrap admin-wrap">
@@ -73,7 +70,6 @@
       <button class="cuenta-tab active" data-tab="proyectos"><i class="ti ti-rocket"></i> Proyectos</button>
       <button class="cuenta-tab" data-tab="crm"><i class="ti ti-brand-whatsapp"></i> CRM</button>
       <button class="cuenta-tab" data-tab="mensajes"><i class="ti ti-mail"></i> Mensajes</button>
-      <button class="cuenta-tab" data-tab="proveedores"><i class="ti ti-truck-delivery"></i> Proveedores</button>
       <button class="cuenta-tab" data-tab="clientes"><i class="ti ti-users"></i> Clientes</button>
     </div>
 
@@ -104,13 +100,6 @@
       </div>
     </section>
 
-    <section class="cuenta-panel" id="panel-proveedores">
-      <div class="cuenta-card glass-bubble">
-        <h2>Solicitudes de proveedores</h2>
-        <div id="adminProveedores" class="admin-lista"></div>
-      </div>
-    </section>
-
     <section class="cuenta-panel" id="panel-clientes">
       <div class="cuenta-card glass-bubble">
         <h2>Clientes registrados</h2>
@@ -120,6 +109,6 @@
 
   </div>
 
-  <script src="/js/kurs.js?v=14"></script>
+  <script src="/js/kurs.js?v=15"></script>
 </body>
 </html>
