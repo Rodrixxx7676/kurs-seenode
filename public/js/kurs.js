@@ -140,17 +140,188 @@
     }
   }
 
-  // ── Botón flotante de WhatsApp (en todo el sitio salvo el panel admin) ────
-  if (!document.querySelector('.admin-wrap')) {
-    const wsp = document.createElement('a');
-    wsp.href = 'https://wa.me/51997315880?text=' +
-      encodeURIComponent('¡Hola KURS! Quiero información sobre sus servicios.');
-    wsp.className = 'wsp-flotante';
-    wsp.target = '_blank';
-    wsp.rel = 'noopener';
-    wsp.setAttribute('aria-label', 'Escríbenos por WhatsApp');
-    wsp.innerHTML = '<i class="ti ti-brand-whatsapp"></i>';
-    document.body.appendChild(wsp);
+  // ── Chatbot / asistente en la página (en todo el sitio salvo el panel admin) ──
+  // Asistente autónomo (sin backend): responde por palabras clave y deriva a
+  // WhatsApp (+51 997 315 880), donde el bot de n8n continúa la conversación.
+  if (!document.querySelector('.admin-wrap')) montarChatbot();
+
+  function montarChatbot() {
+    const WSP = '51997315880';
+    const wspUrl = function (texto) {
+      return 'https://wa.me/' + WSP + '?text=' + encodeURIComponent(texto);
+    };
+
+    const lanzador = document.createElement('button');
+    lanzador.className = 'kbot-lanzador';
+    lanzador.setAttribute('aria-label', 'Abrir el asistente de KURS');
+    lanzador.innerHTML = '<i class="ti ti-message-chatbot"></i><span class="kbot-punto"></span>';
+
+    const win = document.createElement('div');
+    win.className = 'kbot-win';
+    win.setAttribute('role', 'dialog');
+    win.setAttribute('aria-label', 'Asistente de KURS');
+    win.innerHTML =
+      '<div class="kbot-head">' +
+        '<div class="kbot-head-info">' +
+          '<span class="kbot-avatar"><i class="ti ti-robot"></i></span>' +
+          '<div><strong>Asistente KURS</strong>' +
+          '<span class="kbot-estado"><i class="ti ti-point-filled"></i> En línea</span></div>' +
+        '</div>' +
+        '<button class="kbot-cerrar" aria-label="Cerrar el chat">&times;</button>' +
+      '</div>' +
+      '<div class="kbot-msgs" id="kbotMsgs"></div>' +
+      '<div class="kbot-chips" id="kbotChips"></div>' +
+      '<form class="kbot-input" id="kbotForm">' +
+        '<input type="text" id="kbotText" maxlength="200" autocomplete="off" ' +
+          'placeholder="Escribe tu mensaje..." aria-label="Tu mensaje" />' +
+        '<button type="submit" aria-label="Enviar"><i class="ti ti-send"></i></button>' +
+      '</form>';
+
+    document.body.appendChild(lanzador);
+    document.body.appendChild(win);
+
+    const msgs = win.querySelector('#kbotMsgs');
+    const chipsBox = win.querySelector('#kbotChips');
+    const form = win.querySelector('#kbotForm');
+    const input = win.querySelector('#kbotText');
+    let iniciado = false;
+
+    function esc(t) {
+      return t.replace(/[&<>"']/g, function (c) {
+        return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+      });
+    }
+    function scrollAbajo() { msgs.scrollTop = msgs.scrollHeight; }
+
+    function burbuja(quien, html) {
+      const b = document.createElement('div');
+      b.className = 'kbot-msg kbot-' + quien;
+      b.innerHTML = html;
+      msgs.appendChild(b);
+      scrollAbajo();
+      return b;
+    }
+
+    const CHIPS_BASE = [
+      { t: 'Servicios', k: 'servicios' },
+      { t: 'Cotización', k: 'precio' },
+      { t: 'Contacto', k: 'contacto' },
+      { t: 'WhatsApp', k: 'wsp' }
+    ];
+
+    function pintarChips(lista) {
+      chipsBox.innerHTML = '';
+      (lista || CHIPS_BASE).forEach(function (c) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'kbot-chip';
+        b.textContent = c.t;
+        b.addEventListener('click', function () {
+          if (c.url) { window.open(c.url, '_blank', 'noopener'); return; }
+          burbuja('user', esc(c.t));
+          manejar(c.t, c.k);
+        });
+        chipsBox.appendChild(b);
+      });
+    }
+
+    // Respuesta del bot con un breve retardo (efecto "escribiendo...")
+    function responder(html, chips) {
+      chipsBox.innerHTML = '';
+      const t = burbuja('bot', '<span class="kbot-typing"><i></i><i></i><i></i></span>');
+      setTimeout(function () {
+        t.remove();
+        burbuja('bot', html);
+        pintarChips(chips);
+      }, 550);
+    }
+
+    function intencion(texto) {
+      const t = texto.toLowerCase();
+      if (/hola|buen|saludo|hey|qué tal|que tal/.test(t)) return 'saludo';
+      if (/precio|costo|cotiz|cu[aá]nto|tarifa|presupuesto|vale/.test(t)) return 'precio';
+      if (/servicio|web|app|p[aá]gina|software|automatiz|chatbot|bot|desarrollo|sistema|tienda/.test(t)) return 'servicios';
+      if (/contacto|tel[eé]fono|correo|email|whats|hablar|humano|asesor|llamar/.test(t)) return 'contacto';
+      if (/gracias|ok|listo|genial|perfecto/.test(t)) return 'gracias';
+      return 'default';
+    }
+
+    function manejar(textoUsuario, claveForzada) {
+      const clave = claveForzada || intencion(textoUsuario);
+      if (clave === 'servicios') {
+        responder(
+          'En KURS ayudamos a pymes con:<br>• Páginas y tiendas web<br>• Apps y sistemas a medida<br>' +
+          '• Automatizaciones y chatbots de WhatsApp<br><br>¿Sobre cuál quieres saber más?',
+          [{ t: 'Cotización', k: 'precio' },
+           { t: 'Hablar por WhatsApp', url: wspUrl('¡Hola KURS! Quiero saber más sobre sus servicios.') }]
+        );
+      } else if (clave === 'precio') {
+        responder(
+          'Cada proyecto se cotiza según su alcance. Cuéntanos qué necesitas y te preparamos una ' +
+          'propuesta sin costo, normalmente en menos de 24 h.',
+          [{ t: 'Pedir cotización', url: wspUrl('¡Hola KURS! Quiero una cotización para un proyecto.') },
+           { t: 'Servicios', k: 'servicios' }]
+        );
+      } else if (clave === 'contacto') {
+        responder(
+          'Puedes escribirnos por:<br>• WhatsApp: +51 997 315 880<br>' +
+          '• Correo: kurs.company.com@gmail.com<br>• Instagram: @kurs.pe',
+          [{ t: 'Abrir WhatsApp', url: wspUrl('¡Hola KURS! Me gustaría hablar con un asesor.') }]
+        );
+      } else if (clave === 'wsp') {
+        responder(
+          'Te llevo con nuestro equipo por WhatsApp 👇 Ahí seguimos la conversación.',
+          [{ t: 'Abrir WhatsApp', url: wspUrl('¡Hola KURS! Vengo desde la web.') }]
+        );
+      } else if (clave === 'saludo') {
+        responder('¡Hola! 👋 Soy el asistente de KURS. ¿En qué te ayudo hoy?');
+      } else if (clave === 'gracias') {
+        responder('¡Con gusto! Si necesitas algo más, aquí estoy. 🚀');
+      } else {
+        responder(
+          'Entiendo. ¿Quieres que te conecte con nuestro equipo por WhatsApp para darte la mejor respuesta?',
+          [{ t: 'Sí, por WhatsApp', url: wspUrl('¡Hola KURS! Tengo una consulta: ' + textoUsuario) },
+           { t: 'Servicios', k: 'servicios' }]
+        );
+      }
+    }
+
+    function iniciar() {
+      if (iniciado) return;
+      iniciado = true;
+      responder('¡Hola! 👋 Soy el asistente de <strong>KURS</strong>. ' +
+        'Cuéntame qué necesitas o elige una opción:');
+    }
+
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      const txt = input.value.trim();
+      if (!txt) return;
+      burbuja('user', esc(txt));
+      input.value = '';
+      manejar(txt);
+    });
+
+    function abrir() {
+      win.classList.add('abierta');
+      lanzador.classList.add('activo');
+      const punto = lanzador.querySelector('.kbot-punto');
+      if (punto) punto.style.display = 'none';
+      iniciar();
+      setTimeout(function () { input.focus(); }, 200);
+    }
+    function cerrar() {
+      win.classList.remove('abierta');
+      lanzador.classList.remove('activo');
+    }
+
+    lanzador.addEventListener('click', function () {
+      if (win.classList.contains('abierta')) cerrar(); else abrir();
+    });
+    win.querySelector('.kbot-cerrar').addEventListener('click', cerrar);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && win.classList.contains('abierta')) cerrar();
+    });
   }
 
   // ── Mostrar/ocultar contraseña ────────────────────────────────────────────

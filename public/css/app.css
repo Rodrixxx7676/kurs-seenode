@@ -1476,6 +1476,118 @@ html { scroll-behavior: smooth; }
   .wsp-flotante { width: 52px; height: 52px; font-size: 27px; bottom: 16px; right: 16px; }
 }
 
+/* ═══════════ CHATBOT / ASISTENTE EN LA PÁGINA ═══════════ */
+.kbot-lanzador {
+  position: fixed; bottom: 22px; right: 22px; z-index: 160;
+  width: 60px; height: 60px; border-radius: 50%; border: none; cursor: pointer;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #e8e8f0, #999aaa);
+  color: #0a0a0a; font-size: 30px;
+  box-shadow: 0 8px 28px rgba(0,0,0,0.45);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  animation: kbot-pulso 2.8s ease-in-out infinite;
+}
+.kbot-lanzador:hover { transform: scale(1.08); box-shadow: 0 10px 34px rgba(0,0,0,0.6); }
+.kbot-lanzador.activo { animation: none; }
+.kbot-punto {
+  position: absolute; top: 9px; right: 9px; width: 12px; height: 12px;
+  background: #35e08a; border-radius: 50%; border: 2px solid #0a0a0a;
+}
+@keyframes kbot-pulso {
+  0%, 100% { box-shadow: 0 8px 28px rgba(0,0,0,0.45); }
+  50%      { box-shadow: 0 8px 28px rgba(0,0,0,0.45), 0 0 0 12px rgba(255,255,255,0.10); }
+}
+
+.kbot-win {
+  position: fixed; bottom: 94px; right: 22px; z-index: 160;
+  width: 360px; max-width: calc(100vw - 32px);
+  height: 520px; max-height: calc(100vh - 130px);
+  display: flex; flex-direction: column;
+  background: rgba(14,14,18,0.88);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border); border-radius: var(--radius-lg);
+  box-shadow: 0 24px 60px rgba(0,0,0,0.55);
+  overflow: hidden;
+  opacity: 0; transform: translateY(20px) scale(0.96); pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+.kbot-win.abierta { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+
+.kbot-head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 16px; border-bottom: 1px solid var(--glass-border);
+  background: rgba(255,255,255,0.05);
+}
+.kbot-head-info { display: flex; align-items: center; gap: 10px; }
+.kbot-avatar {
+  width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center;
+  background: linear-gradient(135deg, #e8e8f0, #999aaa); color: #0a0a0a; font-size: 20px;
+}
+.kbot-head strong {
+  display: block; color: var(--white); font-family: var(--font-display);
+  font-size: 0.92rem; letter-spacing: 0.04em;
+}
+.kbot-estado { display: flex; align-items: center; gap: 2px; color: #35e08a; font-size: 0.72rem; }
+.kbot-cerrar {
+  background: none; border: none; color: var(--silver); font-size: 26px; line-height: 1;
+  cursor: pointer; padding: 0 4px; transition: color 0.2s ease;
+}
+.kbot-cerrar:hover { color: var(--white); }
+
+.kbot-msgs { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+.kbot-msg {
+  max-width: 82%; padding: 10px 13px; border-radius: 14px;
+  font-size: 0.9rem; line-height: 1.45; word-wrap: break-word; font-family: var(--font-body);
+}
+.kbot-bot {
+  align-self: flex-start; background: var(--glass-bg); border: 1px solid var(--glass-border);
+  color: var(--white); border-bottom-left-radius: 4px;
+}
+.kbot-user {
+  align-self: flex-end; background: linear-gradient(135deg, #e8e8f0, #b8b8c8);
+  color: #0a0a0a; border-bottom-right-radius: 4px;
+}
+.kbot-bot a { color: #cfcfe4; }
+
+.kbot-typing { display: inline-flex; gap: 4px; padding: 3px 0; }
+.kbot-typing i {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--silver);
+  animation: kbot-blink 1.2s infinite;
+}
+.kbot-typing i:nth-child(2) { animation-delay: 0.2s; }
+.kbot-typing i:nth-child(3) { animation-delay: 0.4s; }
+@keyframes kbot-blink { 0%, 60%, 100% { opacity: 0.3; } 30% { opacity: 1; } }
+
+.kbot-chips { display: flex; flex-wrap: wrap; gap: 7px; padding: 0 14px 10px; }
+.kbot-chip {
+  background: var(--glass-bg); border: 1px solid var(--glass-border); color: var(--white);
+  padding: 7px 12px; border-radius: 20px; font-size: 0.78rem; cursor: pointer;
+  font-family: var(--font-body); transition: background 0.2s ease, border-color 0.2s ease;
+}
+.kbot-chip:hover { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.3); }
+
+.kbot-input { display: flex; gap: 8px; padding: 12px 14px; border-top: 1px solid var(--glass-border); }
+.kbot-input input {
+  flex: 1; background: var(--glass-bg); border: 1px solid var(--glass-border); border-radius: 20px;
+  padding: 10px 14px; color: var(--white); font-family: var(--font-body); font-size: 0.88rem; outline: none;
+}
+.kbot-input input::placeholder { color: var(--silver); }
+.kbot-input input:focus { border-color: rgba(255,255,255,0.4); }
+.kbot-input button {
+  width: 42px; height: 42px; border-radius: 50%; border: none; cursor: pointer; flex-shrink: 0;
+  background: linear-gradient(135deg, #e8e8f0, #999aaa); color: #0a0a0a; font-size: 18px;
+  display: grid; place-items: center; transition: transform 0.15s ease;
+}
+.kbot-input button:hover { transform: scale(1.08); }
+
+@media (max-width: 600px) {
+  .kbot-lanzador { width: 54px; height: 54px; font-size: 27px; bottom: 16px; right: 16px; }
+  .kbot-win {
+    bottom: 80px; right: 12px; left: 12px; width: auto; max-width: none;
+    height: 68vh; max-height: none;
+  }
+}
+
 /* ═══════════ POLÍTICA DE PRIVACIDAD ═══════════ */
 .legal-wrap {
   position: relative; z-index: 1;
