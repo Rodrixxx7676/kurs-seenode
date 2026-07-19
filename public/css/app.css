@@ -1612,6 +1612,47 @@ html { scroll-behavior: smooth; }
   }
 }
 
+/* ═══════════ PROMO FLOTANTE (7 días gratis) ═══════════ */
+.promo7 {
+  position: fixed; left: 22px; bottom: 22px; z-index: 155;
+  width: 300px; max-width: calc(100vw - 44px);
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 16px 30px 16px 16px;
+  background: rgba(14,14,18,0.9);
+  backdrop-filter: var(--glass-blur); -webkit-backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--glass-border); border-radius: var(--radius-md);
+  box-shadow: 0 18px 44px rgba(0,0,0,0.5);
+  opacity: 0; transform: translateY(24px) scale(0.96); pointer-events: none;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.promo7-visible { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+.promo7-cerrar {
+  position: absolute; top: 6px; right: 8px;
+  background: none; border: none; color: var(--silver); font-size: 20px; line-height: 1;
+  cursor: pointer; padding: 2px 4px; transition: color 0.2s ease;
+}
+.promo7-cerrar:hover { color: var(--white); }
+.promo7-icono {
+  flex-shrink: 0; width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center;
+  background: linear-gradient(135deg, #e8e8f0, #999aaa); color: #0a0a0a; font-size: 24px;
+}
+.promo7-cuerpo { display: flex; flex-direction: column; gap: 2px; }
+.promo7-cuerpo strong {
+  font-family: var(--font-display); color: var(--white); font-size: 1rem; letter-spacing: 0.04em;
+}
+.promo7-cuerpo p { font-family: var(--font-body); color: var(--silver); font-size: 0.8rem; margin: 0; line-height: 1.35; }
+.promo7-cta {
+  margin-top: 8px; align-self: flex-start; display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--font-display); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+  color: #0a0a0a; text-decoration: none;
+  background: linear-gradient(135deg, #e8e8f0, #b8b8c8); padding: 8px 14px; border-radius: 999px;
+  transition: transform 0.15s ease;
+}
+.promo7-cta:hover { transform: translateX(2px); }
+@media (max-width: 600px) {
+  .promo7 { left: 12px; right: 84px; bottom: 14px; width: auto; max-width: none; }
+}
+
 /* ═══════════ POLÍTICA DE PRIVACIDAD ═══════════ */
 .legal-wrap {
   position: relative; z-index: 1;
