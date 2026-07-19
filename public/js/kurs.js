@@ -159,7 +159,7 @@
       img.className = 'kbot-kosmo-img';
       img.alt = 'KOSMO';
       img.addEventListener('load', function () { cont.classList.add('kbot-con-img'); });
-      img.src = '/images/kosmo.png';
+      img.src = '/images/kosmo-cara.jpg';
       cont.insertBefore(img, cont.firstChild);
     }
 
