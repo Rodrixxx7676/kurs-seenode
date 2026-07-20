@@ -193,15 +193,15 @@
       return 'https://wa.me/' + WSP + '?text=' + encodeURIComponent(texto);
     };
 
-    // KOSMO usa la imagen del personaje (recortada a la cabeza por CSS). Si la
-    // imagen aún no existe en /images/kosmo.png, se mantiene el ícono de respaldo.
+    // KOSMO usa la imagen del personaje completo, encuadrada en la carita por
+    // CSS. Si la imagen faltara, se mantiene el ícono de respaldo.
     function montarKosmo(cont) {
       if (!cont) return;
       const img = document.createElement('img');
       img.className = 'kbot-kosmo-img';
       img.alt = 'KOSMO';
       img.addEventListener('load', function () { cont.classList.add('kbot-con-img'); });
-      img.src = '/images/kosmo-cara.jpg';
+      img.src = '/images/kosmo-completo.png';
       cont.insertBefore(img, cont.firstChild);
     }
 
@@ -242,6 +242,8 @@
     const form = win.querySelector('#kbotForm');
     const input = win.querySelector('#kbotText');
     let iniciado = false;
+    let teaser = null;
+    function quitarTeaser() { if (teaser) { teaser.remove(); teaser = null; } }
 
     function esc(t) {
       return t.replace(/[&<>"']/g, function (c) {
@@ -260,10 +262,10 @@
     }
 
     const CHIPS_BASE = [
+      { t: '🎁 7 días gratis', k: 'promo' },
       { t: 'Servicios', k: 'servicios' },
       { t: 'Cotización', k: 'precio' },
-      { t: 'Contacto', k: 'contacto' },
-      { t: 'WhatsApp', k: 'wsp' }
+      { t: 'Contacto', k: 'contacto' }
     ];
 
     function pintarChips(lista) {
@@ -295,7 +297,13 @@
 
     function intencion(texto) {
       const t = texto.toLowerCase();
-      if (/hola|buen|saludo|hey|qué tal|que tal/.test(t)) return 'saludo';
+      if (/gratis|prueba|7 d[ií]|siete d[ií]|promo|descuento|oferta|cup[oó]n/.test(t)) return 'promo';
+      if (/hola|buen|saludo|hey|qué tal|que tal|kosmo/.test(t)) return 'saludo';
+      if (/demora|tiempo|entrega|plazo|dura|r[aá]pido|listo para cu[aá]ndo/.test(t)) return 'tiempo';
+      if (/horario|atienden|atenci[oó]n|abierto|qué hora|que hora/.test(t)) return 'horario';
+      if (/d[oó]nde|ubica|direcci[oó]n|lugar|ciudad|per[uú]|presencial/.test(t)) return 'ubicacion';
+      if (/portafolio|proyectos|ejemplos|trabajos|casos|clientes/.test(t)) return 'portafolio';
+      if (/pago|pagar|transferencia|yape|plin|tarjeta|factura|financ/.test(t)) return 'pago';
       if (/precio|costo|cotiz|cu[aá]nto|tarifa|presupuesto|vale/.test(t)) return 'precio';
       if (/servicio|web|app|p[aá]gina|software|automatiz|chatbot|bot|desarrollo|sistema|tienda/.test(t)) return 'servicios';
       if (/contacto|tel[eé]fono|correo|email|whats|hablar|humano|asesor|llamar/.test(t)) return 'contacto';
@@ -330,8 +338,47 @@
           'Te llevo con nuestro equipo por WhatsApp 👇 Ahí seguimos la conversación.',
           [{ t: 'Abrir WhatsApp', url: wspUrl('¡Hola KURS! Vengo desde la web.') }]
         );
+      } else if (clave === 'promo') {
+        responder(
+          '🎁 ¡Tenemos <strong>7 días GRATIS</strong> para nuevos usuarios en cualquier ' +
+          'servicio! Pruébanos sin compromiso. ¿Te activo la promo?',
+          [{ t: 'Quiero mis 7 días', url: wspUrl('¡Hola KURS! Soy nuevo y quiero aprovechar los 7 días gratis en un servicio.') },
+           { t: 'Servicios', k: 'servicios' }]
+        );
+      } else if (clave === 'tiempo') {
+        responder(
+          'Los tiempos dependen del proyecto: una web suele estar en 1–2 semanas y una ' +
+          'automatización o chatbot puede tomar solo unos días. Te damos una fecha exacta al cotizar.',
+          [{ t: 'Pedir cotización', url: wspUrl('¡Hola KURS! ¿En cuánto tiempo podrían entregar mi proyecto?') },
+           { t: 'Servicios', k: 'servicios' }]
+        );
+      } else if (clave === 'horario') {
+        responder(
+          'Atendemos de <strong>lunes a sábado</strong>. Por WhatsApp respondemos rápido, ' +
+          'y KOSMO 🐾 está aquí las 24 h para orientarte.',
+          [{ t: 'Escribir por WhatsApp', url: wspUrl('¡Hola KURS! Quería consultarles algo.') }]
+        );
+      } else if (clave === 'ubicacion') {
+        responder(
+          'Somos un equipo de <strong>Perú</strong> 🇵🇪 y trabajamos 100% en línea, así que ' +
+          'podemos ayudarte estés donde estés.',
+          [{ t: 'Contacto', k: 'contacto' }]
+        );
+      } else if (clave === 'portafolio') {
+        responder(
+          'Hemos hecho webs, tiendas online, sistemas a medida y chatbots de WhatsApp para ' +
+          'pymes. Cuéntanos tu rubro y te mostramos ejemplos parecidos por WhatsApp.',
+          [{ t: 'Ver ejemplos', url: wspUrl('¡Hola KURS! ¿Me pueden mostrar ejemplos de sus trabajos?') },
+           { t: 'Servicios', k: 'servicios' }]
+        );
+      } else if (clave === 'pago') {
+        responder(
+          'Aceptamos transferencia, Yape y Plin. Normalmente se trabaja con un adelanto y el ' +
+          'resto contra entrega; también emitimos comprobante.',
+          [{ t: 'Consultar', url: wspUrl('¡Hola KURS! Quería consultar sobre las formas de pago.') }]
+        );
       } else if (clave === 'saludo') {
-        responder('¡Hola! 👋 Soy el asistente de KURS. ¿En qué te ayudo hoy?');
+        responder('¡Hola! 👋 Soy <strong>KOSMO</strong> 🐾, tu amigo virtual de KURS. ¿En qué te ayudo hoy?');
       } else if (clave === 'gracias') {
         responder('¡Con gusto! Si necesitas algo más, aquí estoy. 🚀');
       } else {
@@ -346,7 +393,9 @@
     function iniciar() {
       if (iniciado) return;
       iniciado = true;
-      responder('¡Hola! 👋 Soy <strong>KOSMO</strong> 🐾, tu amigo virtual de KURS. ' +
+      const h = new Date().getHours();
+      const hola = h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
+      responder('¡' + hola + '! 👋 Soy <strong>KOSMO</strong> 🐾, tu amigo virtual de KURS. ' +
         'Estoy para ayudarte y acompañarte. ¿Qué necesitas hoy?');
     }
 
@@ -360,6 +409,8 @@
     });
 
     function abrir() {
+      quitarTeaser();
+      localStorage.setItem('kurs_kosmo_teaser', 'off');
       win.classList.add('abierta');
       lanzador.classList.add('activo');
       const punto = lanzador.querySelector('.kbot-punto');
@@ -379,6 +430,27 @@
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && win.classList.contains('abierta')) cerrar();
     });
+
+    // Teaser: a los pocos segundos, una burbuja invita a chatear (solo si el
+    // usuario no lo abrió ni lo cerró antes — se recuerda en localStorage).
+    if (localStorage.getItem('kurs_kosmo_teaser') !== 'off') {
+      setTimeout(function () {
+        if (win.classList.contains('abierta') || teaser) return;
+        teaser = document.createElement('button');
+        teaser.className = 'kbot-teaser';
+        teaser.setAttribute('aria-label', 'Abrir el chat de KOSMO');
+        teaser.innerHTML = '<span>👋 ¡Hola! ¿Te ayudo?</span>' +
+          '<i class="ti ti-x kbot-teaser-x" aria-hidden="true"></i>';
+        document.body.appendChild(teaser);
+        setTimeout(function () { if (teaser) teaser.classList.add('kbot-teaser-visible'); }, 30);
+        teaser.addEventListener('click', function (e) {
+          localStorage.setItem('kurs_kosmo_teaser', 'off');
+          if (e.target.classList.contains('kbot-teaser-x')) { quitarTeaser(); return; }
+          quitarTeaser();
+          abrir();
+        });
+      }, 5000);
+    }
   }
 
   // ── Mostrar/ocultar contraseña ────────────────────────────────────────────
