@@ -145,32 +145,45 @@
   // WhatsApp (+51 997 315 880), donde el bot de n8n continúa la conversación.
   if (!document.querySelector('.admin-wrap')) montarChatbot();
 
-  // ── Promo flotante: 7 días gratis para nuevos usuarios (descartable) ──
-  // Aparece salvo en /admin y si el usuario no la cerró antes (localStorage).
+  // ── Promo destacada: barra superior "7 días gratis" (descartable) ──
+  // Fija arriba de todo; empuja el navbar y el contenido hacia abajo con la
+  // variable --promo-h (su altura real, recalculada al redimensionar). No sale
+  // en /admin ni si el usuario la cerró antes (localStorage).
   if (!document.querySelector('.admin-wrap') &&
-      localStorage.getItem('kurs_promo7') !== 'off') montarPromo7();
+      localStorage.getItem('kurs_promo7bar') !== 'off') montarPromo7();
 
   function montarPromo7() {
-    const card = document.createElement('aside');
-    card.className = 'promo7';
-    card.setAttribute('aria-label', 'Promoción para nuevos usuarios');
     const wsp = 'https://wa.me/51997315880?text=' +
       encodeURIComponent('¡Hola KURS! Soy nuevo y quiero aprovechar los 7 días gratis en un servicio.');
-    card.innerHTML =
-      '<button class="promo7-cerrar" aria-label="Cerrar promoción">&times;</button>' +
-      '<span class="promo7-icono"><i class="ti ti-gift"></i></span>' +
-      '<div class="promo7-cuerpo">' +
-        '<strong>7 días GRATIS</strong>' +
-        '<p>Para nuevos usuarios · en cualquier servicio</p>' +
-        '<a class="promo7-cta" href="' + wsp + '" target="_blank" rel="noopener">' +
-          'Aprovéchalo <i class="ti ti-arrow-right"></i></a>' +
-      '</div>';
-    document.body.appendChild(card);
-    setTimeout(function () { card.classList.add('promo7-visible'); }, 1000);
-    card.querySelector('.promo7-cerrar').addEventListener('click', function () {
-      card.classList.remove('promo7-visible');
-      localStorage.setItem('kurs_promo7', 'off');
-      setTimeout(function () { card.remove(); }, 300);
+    const bar = document.createElement('div');
+    bar.className = 'promo-bar';
+    bar.setAttribute('role', 'complementary');
+    bar.setAttribute('aria-label', 'Promoción para nuevos usuarios');
+    bar.innerHTML =
+      '<a class="promo-bar-link" href="' + wsp + '" target="_blank" rel="noopener">' +
+        '<span class="promo-bar-icono">🎁</span>' +
+        '<span class="promo-bar-texto"><strong>7 días GRATIS</strong> para nuevos usuarios' +
+          '<span class="promo-bar-extra"> · en cualquier servicio</span></span>' +
+        '<span class="promo-bar-cta">Aprovéchalo <i class="ti ti-arrow-right"></i></span>' +
+      '</a>' +
+      '<button class="promo-bar-cerrar" aria-label="Cerrar promoción">&times;</button>';
+    document.body.appendChild(bar);
+    document.body.classList.add('con-promo');
+
+    // Recalcula la altura real de la barra ante cualquier cambio (envolvente,
+    // rotación, redimensionado): así el empuje del contenido siempre coincide.
+    function ajustar() { document.body.style.setProperty('--promo-h', bar.offsetHeight + 'px'); }
+    ajustar();
+    let ro = null;
+    if (window.ResizeObserver) { ro = new ResizeObserver(ajustar); ro.observe(bar); }
+    else window.addEventListener('resize', ajustar);
+
+    bar.querySelector('.promo-bar-cerrar').addEventListener('click', function () {
+      if (ro) ro.disconnect(); else window.removeEventListener('resize', ajustar);
+      document.body.classList.remove('con-promo');
+      document.body.style.removeProperty('--promo-h');
+      bar.remove();
+      localStorage.setItem('kurs_promo7bar', 'off');
     });
   }
 
