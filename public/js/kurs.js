@@ -145,6 +145,31 @@
   // WhatsApp (+51 997 315 880), donde el bot de n8n continúa la conversación.
   if (!document.querySelector('.admin-wrap')) montarChatbot();
 
+  // ── Botón "volver arriba" (aparece al bajar; esquina inferior izquierda) ──
+  (function () {
+    const subir = document.createElement('button');
+    subir.className = 'subir-btn';
+    subir.setAttribute('aria-label', 'Volver arriba');
+    subir.innerHTML = '<i class="ti ti-arrow-up"></i>';
+    subir.addEventListener('click', function () {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.body.appendChild(subir);
+
+    // Visibilidad: listener de scroll (respuesta inmediata) + un temporizador
+    // de respaldo que corrige el estado si algún scroll no emitió el evento.
+    let visible = false;
+    function actualizar() {
+      const mostrar = window.scrollY > 600;
+      if (mostrar !== visible) {
+        visible = mostrar;
+        subir.classList.toggle('subir-visible', mostrar);
+      }
+    }
+    window.addEventListener('scroll', actualizar, { passive: true });
+    setInterval(actualizar, 600);
+  })();
+
   // ── Promo destacada: barra superior "7 días gratis" (descartable) ──
   // Fija arriba de todo; empuja el navbar y el contenido hacia abajo con la
   // variable --promo-h (su altura real, recalculada al redimensionar). No sale
@@ -222,9 +247,13 @@
           '<div><strong>KOSMO</strong>' +
           '<span class="kbot-estado"><i class="ti ti-point-filled"></i> Tu amigo virtual · En línea</span></div>' +
         '</div>' +
-        '<button class="kbot-cerrar" aria-label="Cerrar el chat">&times;</button>' +
+        '<div class="kbot-head-acciones">' +
+          '<button class="kbot-reiniciar" aria-label="Empezar la conversación de nuevo" ' +
+            'title="Empezar de nuevo"><i class="ti ti-refresh"></i></button>' +
+          '<button class="kbot-cerrar" aria-label="Cerrar el chat">&times;</button>' +
+        '</div>' +
       '</div>' +
-      '<div class="kbot-msgs" id="kbotMsgs"></div>' +
+      '<div class="kbot-msgs" id="kbotMsgs" aria-live="polite"></div>' +
       '<div class="kbot-chips" id="kbotChips"></div>' +
       '<form class="kbot-input" id="kbotForm">' +
         '<input type="text" id="kbotText" maxlength="200" autocomplete="off" ' +
@@ -315,8 +344,9 @@
 
     function intencion(texto) {
       const t = texto.toLowerCase();
+      // El saludo se evalúa al final: "hola, ¿cuánto cuesta una web?" debe
+      // responder por el precio, no quedarse en el saludo.
       if (/gratis|prueba|7 d[ií]|siete d[ií]|promo|descuento|oferta|cup[oó]n/.test(t)) return 'promo';
-      if (/hola|buen|saludo|hey|qué tal|que tal|kosmo/.test(t)) return 'saludo';
       if (/demora|tiempo|entrega|plazo|dura|r[aá]pido|listo para cu[aá]ndo/.test(t)) return 'tiempo';
       if (/horario|atienden|atenci[oó]n|abierto|qué hora|que hora/.test(t)) return 'horario';
       if (/d[oó]nde|ubica|direcci[oó]n|lugar|ciudad|per[uú]|presencial/.test(t)) return 'ubicacion';
@@ -325,6 +355,7 @@
       if (/precio|costo|cotiz|cu[aá]nto|tarifa|presupuesto|vale/.test(t)) return 'precio';
       if (/servicio|web|app|p[aá]gina|software|automatiz|chatbot|bot|desarrollo|sistema|tienda/.test(t)) return 'servicios';
       if (/contacto|tel[eé]fono|correo|email|whats|hablar|humano|asesor|llamar/.test(t)) return 'contacto';
+      if (/hola|buen|saludo|hey|qué tal|que tal|kosmo/.test(t)) return 'saludo';
       if (/gracias|ok|listo|genial|perfecto/.test(t)) return 'gracias';
       return 'default';
     }
@@ -408,6 +439,20 @@
       }
     }
 
+    // Remate del saludo según la página: KOSMO sabe dónde está el visitante
+    function remateContextual() {
+      if (document.querySelector('.e404-wrap')) {
+        return '¿Te perdiste? 🧭 Dime qué buscabas y te llevo por buen rumbo.';
+      }
+      if (location.pathname.indexOf('/contacto') === 0) {
+        return '¿Te ayudo con el formulario, o prefieres que hablemos directo por WhatsApp?';
+      }
+      if (location.pathname.indexOf('/privacidad') === 0) {
+        return 'Si tienes dudas sobre tus datos o la privacidad, pregúntame con confianza.';
+      }
+      return 'Estoy para ayudarte y acompañarte. ¿Qué necesitas hoy?';
+    }
+
     function iniciar() {
       if (iniciado) return;
       iniciado = true;
@@ -420,7 +465,17 @@
       const h = new Date().getHours();
       const hola = h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
       responder('¡' + hola + '! 👋 Soy <strong>KOSMO</strong> 🐾, tu amigo virtual de KURS. ' +
-        'Estoy para ayudarte y acompañarte. ¿Qué necesitas hoy?');
+        remateContextual());
+    }
+
+    // Empezar de nuevo: borra la memoria y vuelve a saludar
+    function reiniciarChat() {
+      historial = [];
+      try { sessionStorage.removeItem(HIST_KEY); } catch { /* sin storage */ }
+      msgs.innerHTML = '';
+      chipsBox.innerHTML = '';
+      iniciado = false;
+      iniciar();
     }
 
     form.addEventListener('submit', function (e) {
@@ -451,6 +506,7 @@
       if (win.classList.contains('abierta')) cerrar(); else abrir();
     });
     win.querySelector('.kbot-cerrar').addEventListener('click', cerrar);
+    win.querySelector('.kbot-reiniciar').addEventListener('click', reiniciarChat);
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape' && win.classList.contains('abierta')) cerrar();
     });
