@@ -3,16 +3,33 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>KURS — Rumbo al futuro</title>
+  <title>KURS — Página no encontrada</title>
+  <meta name="robots" content="noindex" />
+  <meta name="theme-color" content="#0a0a0a" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/css/app.css?v=23" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
+  <link rel="stylesheet" href="/css/app.css?v=24" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
 </head>
 <body>
-  <p style="font-family:'Orbitron',sans-serif;color:#fff;text-align:center;padding:4rem;">
-    404 — Ruta no encontrada
-  </p>
+
+  <div class="stars-layer" aria-hidden="true"></div>
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <main class="e404-wrap">
+    <img src="/images/kosmo-completo.png?v=2" alt="KOSMO, la mascota de KURS, flotando en el espacio" class="e404-img" />
+    <h1 class="e404-code gradient-text">404</h1>
+    <p class="e404-texto">¡Ups! KOSMO olfateó por todo el cosmos y no encontró esta página.
+    Volvamos a marcar el rumbo.</p>
+    <a href="/" class="btn-primary glass-bubble-btn"><i class="ti ti-home"></i> Volver al inicio</a>
+  </main>
+
+  <script src="/js/kurs.js?v=24"></script>
 </body>
 </html>

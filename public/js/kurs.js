@@ -201,7 +201,7 @@
       img.className = 'kbot-kosmo-img';
       img.alt = 'KOSMO';
       img.addEventListener('load', function () { cont.classList.add('kbot-con-img'); });
-      img.src = '/images/kosmo-completo.png';
+      img.src = '/images/kosmo-completo.png?v=2';
       cont.insertBefore(img, cont.firstChild);
     }
 
@@ -252,13 +252,30 @@
     }
     function scrollAbajo() { msgs.scrollTop = msgs.scrollHeight; }
 
-    function burbuja(quien, html) {
+    // Memoria de la conversación durante la visita (sessionStorage): al navegar
+    // entre páginas el chat no arranca de cero. El HTML guardado es solo el que
+    // genera este script (el texto del usuario ya entra escapado con esc()).
+    const HIST_KEY = 'kurs_kosmo_hist';
+    let historial = [];
+    try { historial = JSON.parse(sessionStorage.getItem(HIST_KEY) || '[]') || []; } catch { historial = []; }
+    function guardarHist(quien, html) {
+      historial.push({ q: quien, h: html });
+      if (historial.length > 40) historial = historial.slice(-40);
+      try { sessionStorage.setItem(HIST_KEY, JSON.stringify(historial)); } catch { /* sin storage */ }
+    }
+
+    function pintar(quien, html) {
       const b = document.createElement('div');
       b.className = 'kbot-msg kbot-' + quien;
       b.innerHTML = html;
       msgs.appendChild(b);
       scrollAbajo();
       return b;
+    }
+    // efimero=true → no se guarda (indicador de "escribiendo...")
+    function burbuja(quien, html, efimero) {
+      if (!efimero) guardarHist(quien, html);
+      return pintar(quien, html);
     }
 
     const CHIPS_BASE = [
@@ -284,15 +301,16 @@
       });
     }
 
-    // Respuesta del bot con un breve retardo (efecto "escribiendo...")
+    // Respuesta del bot con retardo proporcional al largo (efecto "escribiendo...")
     function responder(html, chips) {
       chipsBox.innerHTML = '';
-      const t = burbuja('bot', '<span class="kbot-typing"><i></i><i></i><i></i></span>');
+      const t = burbuja('bot', '<span class="kbot-typing"><i></i><i></i><i></i></span>', true);
+      const espera = Math.min(1500, 400 + html.length * 3);
       setTimeout(function () {
         t.remove();
         burbuja('bot', html);
         pintarChips(chips);
-      }, 550);
+      }, espera);
     }
 
     function intencion(texto) {
@@ -393,6 +411,12 @@
     function iniciar() {
       if (iniciado) return;
       iniciado = true;
+      // Si hay conversación previa en esta visita, se restaura en vez de saludar
+      if (historial.length) {
+        historial.forEach(function (m) { pintar(m.q, m.h); });
+        pintarChips();
+        return;
+      }
       const h = new Date().getHours();
       const hola = h < 12 ? 'Buenos días' : (h < 19 ? 'Buenas tardes' : 'Buenas noches');
       responder('¡' + hola + '! 👋 Soy <strong>KOSMO</strong> 🐾, tu amigo virtual de KURS. ' +

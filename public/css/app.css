@@ -1543,7 +1543,7 @@ html { scroll-behavior: smooth; }
 .kbot-con-img > .kbot-kosmo-img {
   display: block; position: absolute; inset: 0;
   width: 100%; height: 100%; object-fit: cover;
-  object-position: 45% 20%; transform: scale(1.9);
+  object-position: 45% 24%; transform: scale(1.65);
   background: #fff;
 }
 .kbot-con-img > .kbot-fallback { display: none; }
@@ -1684,6 +1684,25 @@ body.con-promo .navbar { top: calc(var(--promo-h, 46px) + 12px); }
   .promo-bar-link { font-size: 0.8rem; gap: 6px; }
   .promo-bar-extra { display: none; }
 }
+
+/* Accesibilidad: si el sistema pide menos movimiento, se apagan las
+   animaciones decorativas (brillo de la promo y pulsos de los botones) */
+@media (prefers-reduced-motion: reduce) {
+  .promo-bar::before, .kbot-lanzador, .wsp-flotante { animation: none; }
+}
+
+/* ═══════════ PÁGINA 404 (KOSMO perdido) ═══════════ */
+.e404-wrap {
+  position: relative; z-index: 1; min-height: 100vh;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 18px; padding: 100px 24px 60px; text-align: center;
+}
+.e404-img { width: min(340px, 78vw); height: auto; filter: drop-shadow(0 18px 40px rgba(0,0,0,0.5)); }
+.e404-code {
+  font-family: var(--font-display); font-weight: 900; font-size: clamp(44px, 9vw, 76px);
+  letter-spacing: 0.06em; line-height: 1;
+}
+.e404-texto { font-family: var(--font-body); color: var(--silver); font-size: 1rem; max-width: 420px; }
 
 /* ═══════════ POLÍTICA DE PRIVACIDAD ═══════════ */
 .legal-wrap {
