@@ -18,7 +18,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=26" />
+  <link rel="stylesheet" href="/css/app.css?v=27" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
   <script type="application/ld+json">
   {
@@ -75,6 +75,7 @@
     </div>
     <ul class="nav-links">
       <li><a href="#servicios"><i class="ti ti-briefcase"></i> Servicios</a></li>
+      <li><a href="#precios"><i class="ti ti-tag"></i> Precios</a></li>
       <li><a href="#nosotros"><i class="ti ti-users"></i> Nosotros</a></li>
       <li><a href="/contacto"><i class="ti ti-message-circle"></i> Contacto</a></li>
     </ul>
@@ -194,26 +195,95 @@
     </div>
   </section>
 
-  <!-- ══════════════ STATS — Contador animado (kurs.js) ══════════════ -->
-  <section class="stats">
-    <div class="stats-grid">
-      <div class="stat-item glass-bubble">
-        <span class="stat-number" data-target="200">0</span><span class="stat-plus">+</span>
-        <p>Proyectos completados</p>
-      </div>
-      <div class="stat-item glass-bubble">
-        <span class="stat-number" data-target="98">0</span><span class="stat-plus">%</span>
-        <p>Satisfacción del cliente</p>
-      </div>
-      <div class="stat-item glass-bubble">
-        <span class="stat-number" data-target="15">0</span><span class="stat-plus">+</span>
-        <p>Años de experiencia</p>
-      </div>
-      <div class="stat-item glass-bubble">
-        <span class="stat-number" data-target="50">0</span><span class="stat-plus">+</span>
-        <p>Expertos en el equipo</p>
-      </div>
+  <!-- ══════════════ PRECIOS ══════════════ -->
+  <section class="precios" id="precios">
+    <div class="section-header">
+      <span class="section-tag glass-bubble">Planes y precios</span>
+      <h2>Tu web al alcance de <span class="gradient-text">tu bolsillo</span></h2>
+      <p class="precios-intro">
+        Precios pensados para emprendedores y negocios que están empezando en el Perú.
+        Sin letras chiquitas: <strong>pago único</strong>, tu página lista y funcionando.
+      </p>
     </div>
+
+    <div class="precios-grid">
+
+      <!-- Plan 1 -->
+      <div class="plan-card glass-bubble">
+        <div class="plan-icon"><i class="ti ti-rocket"></i></div>
+        <h3 class="plan-nombre">Arranca</h3>
+        <p class="plan-para">Para lanzar tu negocio a internet por primera vez.</p>
+        <div class="plan-precio">
+          <span class="plan-moneda">S/</span><span class="plan-monto">199</span>
+        </div>
+        <p class="plan-precio-nota">Pago único</p>
+        <ul class="plan-features">
+          <li><i class="ti ti-check"></i> Página web de 1 sección, profesional</li>
+          <li><i class="ti ti-check"></i> Diseño con los colores de tu marca</li>
+          <li><i class="ti ti-check"></i> Se ve perfecta en el celular</li>
+          <li><i class="ti ti-check"></i> Botón directo a tu WhatsApp</li>
+          <li><i class="ti ti-check"></i> Enlaces a tus redes sociales</li>
+          <li><i class="ti ti-check"></i> Lista en 24 a 48 horas</li>
+        </ul>
+        <a class="plan-cta btn-ghost"
+           href="https://wa.me/51997315880?text=%C2%A1Hola%20KURS!%20Me%20interesa%20el%20plan%20Arranca%20(S%2F199)%20para%20mi%20negocio."
+           target="_blank" rel="noopener">Quiero este plan →</a>
+      </div>
+
+      <!-- Plan 2 (destacado) -->
+      <div class="plan-card glass-bubble plan-destacado">
+        <div class="plan-badge glass-bubble">El más elegido</div>
+        <div class="plan-icon"><i class="ti ti-trending-up"></i></div>
+        <h3 class="plan-nombre">Crece</h3>
+        <p class="plan-para">Para negocios que quieren mostrar todo lo que ofrecen.</p>
+        <div class="plan-precio">
+          <span class="plan-moneda">S/</span><span class="plan-monto">399</span>
+        </div>
+        <p class="plan-precio-nota">Pago único</p>
+        <ul class="plan-features">
+          <li><i class="ti ti-check"></i> Todo lo del plan Arranca</li>
+          <li><i class="ti ti-check"></i> Hasta 5 páginas (inicio, servicios, nosotros…)</li>
+          <li><i class="ti ti-check"></i> Catálogo o galería de tus productos</li>
+          <li><i class="ti ti-check"></i> Apareces en Google (SEO básico)</li>
+          <li><i class="ti ti-check"></i> Tu ubicación en Google Maps</li>
+          <li><i class="ti ti-check"></i> Correo profesional con tu nombre</li>
+          <li><i class="ti ti-check"></i> 3 meses de soporte gratis</li>
+        </ul>
+        <a class="plan-cta btn-primary glass-bubble-btn"
+           href="https://wa.me/51997315880?text=%C2%A1Hola%20KURS!%20Me%20interesa%20el%20plan%20Crece%20(S%2F399)%20para%20mi%20negocio."
+           target="_blank" rel="noopener">Quiero este plan →</a>
+      </div>
+
+      <!-- Plan 3 -->
+      <div class="plan-card glass-bubble">
+        <div class="plan-icon"><i class="ti ti-robot"></i></div>
+        <h3 class="plan-nombre">Despega</h3>
+        <p class="plan-para">Para vender más y atender solo, incluso mientras duermes.</p>
+        <div class="plan-precio">
+          <span class="plan-moneda">S/</span><span class="plan-monto">799</span>
+        </div>
+        <p class="plan-precio-nota">Pago único</p>
+        <ul class="plan-features">
+          <li><i class="ti ti-check"></i> Todo lo del plan Crece</li>
+          <li><i class="ti ti-check"></i> Chatbot de WhatsApp que atiende 24/7</li>
+          <li><i class="ti ti-check"></i> Catálogo o tienda ampliada</li>
+          <li><i class="ti ti-check"></i> Panel para editar tu contenido</li>
+          <li><i class="ti ti-check"></i> Automatizaciones y recordatorios</li>
+          <li><i class="ti ti-check"></i> 6 meses de soporte gratis</li>
+        </ul>
+        <a class="plan-cta btn-ghost"
+           href="https://wa.me/51997315880?text=%C2%A1Hola%20KURS!%20Me%20interesa%20el%20plan%20Despega%20(S%2F799)%20para%20mi%20negocio."
+           target="_blank" rel="noopener">Quiero este plan →</a>
+      </div>
+
+    </div>
+
+    <p class="precios-pie">
+      <i class="ti ti-gift"></i> Todos incluyen <strong>dominio y hosting el primer año</strong>.
+      Renovación anual desde S/ 99. ¿No sabes cuál elegir?
+      <a href="https://wa.me/51997315880?text=%C2%A1Hola%20KURS!%20Quiero%20que%20me%20ayuden%20a%20elegir%20un%20plan%20para%20mi%20negocio."
+         target="_blank" rel="noopener">Escríbenos y te asesoramos gratis</a>.
+    </p>
   </section>
 
   <!-- ══════════════ CTA ══════════════ -->
@@ -265,6 +335,6 @@
     <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados. · <a href="/privacidad" class="footer-legal-link">Política de Privacidad</a> · <span class="footer-version">v1</span></p>
   </footer>
 
-  <script src="/js/kurs.js?v=26"></script>
+  <script src="/js/kurs.js?v=27"></script>
 </body>
 </html>
