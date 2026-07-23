@@ -701,8 +701,8 @@
         error.textContent = 'Ingresa un correo electrónico válido.';
         error.style.display = ''; return;
       }
-      if (!password || password.length < 6) {
-        error.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+      if (!password || password.length < 7) {
+        error.textContent = 'La contraseña debe tener al menos 7 caracteres.';
         error.style.display = ''; return;
       }
 
