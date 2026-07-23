@@ -13,15 +13,25 @@
   <meta property="og:description" content="Escríbenos por WhatsApp, Instagram o correo. Respondemos en menos de 24 horas." />
   <meta property="og:url" content="https://kurs-seenode.seenode.app/contacto" />
   <meta property="og:image" content="https://kurs-seenode.seenode.app/images/LogoSinFondo.png" />
-  <meta name="twitter:card" content="summary" />
+  <meta property="og:image:width" content="1920" />
+  <meta property="og:image:height" content="1080" />
+  <meta property="og:locale" content="es_PE" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="KURS — Contacto" />
+  <meta name="twitter:description" content="Escríbenos por WhatsApp, Instagram o correo. Respondemos en menos de 24 horas." />
+  <meta name="twitter:image" content="https://kurs-seenode.seenode.app/images/LogoSinFondo.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=28" />
+  <link rel="stylesheet" href="/css/app.css?v=29" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
 </head>
 <body>
+
+  <a href="#contenido" class="skip-link">Saltar al contenido</a>
 
   <!-- Pantalla de carga: se oculta sola; si a los 10 s no cargó, ofrece reintentar (CSS puro, funciona aunque el JS no llegue) -->
   <div class="carga-splash" id="cargaSplash">
@@ -48,23 +58,23 @@
   </div>
 
   <!-- ══════════════ NAVBAR ══════════════ -->
-  <nav class="navbar glass-bubble">
+  <nav class="navbar glass-bubble" aria-label="Navegación principal">
     <div class="nav-logo">
-      <a href="/">
-        <img src="/images/LogoSolo.svg" alt="KURS" class="logo-img" />
+      <a href="/" aria-label="KURS — inicio">
+        <img src="/images/LogoSolo.svg" alt="KURS" class="logo-img" width="90" height="32" />
       </a>
     </div>
     <ul class="nav-links">
       <li><a href="/#servicios"><i class="ti ti-briefcase"></i> Servicios</a></li>
       <li><a href="/#precios"><i class="ti ti-tag"></i> Precios</a></li>
       <li><a href="/#nosotros"><i class="ti ti-users"></i> Nosotros</a></li>
-      <li><a href="/contacto" class="active"><i class="ti ti-message-circle"></i> Contacto</a></li>
+      <li><a href="/contacto" class="active" aria-current="page"><i class="ti ti-message-circle"></i> Contacto</a></li>
     </ul>
     <div class="nav-auth"></div>
   </nav>
 
   <!-- ══════════════ HERO ══════════════ -->
-  <div class="contacto-hero">
+  <div class="contacto-hero" id="contenido" tabindex="-1">
     <span class="section-tag glass-bubble" style="margin-bottom:20px;display:inline-block;">
       <i class="ti ti-antenna"></i> Estamos aquí
     </span>
@@ -248,6 +258,6 @@
     <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados. · <a href="/privacidad" class="footer-legal-link">Política de Privacidad</a> · <span class="footer-version">v1</span></p>
   </footer>
 
-  <script src="/js/kurs.js?v=28"></script>
+  <script src="/js/kurs.js?v=29"></script>
 </body>
 </html>

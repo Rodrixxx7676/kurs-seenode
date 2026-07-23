@@ -36,6 +36,26 @@ body {
   overflow-x: hidden;
 }
 
+/* ===== Accesibilidad por teclado: contorno visible al navegar con Tab ===== */
+:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.85);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+/* El ratón no dispara :focus-visible, así que el diseño no se ve afectado */
+
+/* ===== Enlace "saltar al contenido" (solo visible al enfocarlo con Tab) ===== */
+.skip-link {
+  position: fixed; top: -60px; left: 16px; z-index: 3000;
+  padding: 10px 18px; border-radius: 999px;
+  background: #fff; color: #0a0a0a;
+  font-family: var(--font-display);
+  font-size: 12px; font-weight: 700; letter-spacing: 0.06em;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+.skip-link:focus { top: 16px; }
+
 h1, h2, h3,
 .btn-cta, .btn-primary,
 .card-number, .section-tag, .badge,
@@ -573,6 +593,31 @@ h1, h2, h3,
   color: rgba(255,255,255,0.5);
 }
 
+/* ===== BANDA DE COMPROMISOS (confianza) ===== */
+.compromisos {
+  position: relative; z-index: 1;
+  max-width: 1140px; margin: 0 auto;
+  padding: 8px 40px 8px;
+}
+.compromisos-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+}
+.compromiso {
+  display: flex; align-items: center; gap: 12px;
+  padding: 18px 20px;
+  border-radius: var(--radius-md);
+}
+.compromiso i {
+  font-size: 24px; color: rgba(255,255,255,0.85);
+  flex-shrink: 0;
+}
+.compromiso span {
+  font-family: var(--font-body);
+  font-size: 13.5px; font-weight: 400; line-height: 1.4;
+  color: rgba(255,255,255,0.8);
+}
+
 /* ===== FAQ ===== */
 .faq {
   position: relative; z-index: 1;
@@ -768,11 +813,14 @@ h1, h2, h3,
   .promise-cta { width: 100%; text-align: center; }
   .benefits-grid { grid-template-columns: repeat(2, 1fr); }
   .proceso-grid { grid-template-columns: repeat(2, 1fr); }
+  .compromisos-grid { grid-template-columns: repeat(2, 1fr); }
+  .compromisos { padding-left: 20px; padding-right: 20px; }
   .footer-contacts { flex-direction: column; align-items: center; gap: 14px; }
 }
 @media (max-width: 500px) {
   .benefits-grid { grid-template-columns: 1fr; }
   .proceso-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
+  .compromisos-grid { grid-template-columns: 1fr; max-width: 420px; margin: 0 auto; }
 }
 
 /* ===== BLAZOR ERROR UI ===== */
@@ -1895,6 +1943,7 @@ body.con-promo .navbar { top: calc(var(--promo-h, 46px) + 12px); }
    animaciones decorativas (brillo de la promo y pulsos de los botones) */
 @media (prefers-reduced-motion: reduce) {
   .promo-bar::before, .kbot-lanzador, .wsp-flotante { animation: none; }
+  .service-card, .plan-card, .paso-card { animation: none !important; }
   html { scroll-behavior: auto; }
 }
 
