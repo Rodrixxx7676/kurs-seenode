@@ -11,7 +11,8 @@ import { GLTFLoader } from './vendor/GLTFLoader.js';
 import { OrbitControls } from './vendor/OrbitControls.js';
 import { RoomEnvironment } from './vendor/RoomEnvironment.js';
 
-const MODELO_URL = '/images/Astronauta%20v1.glb';
+// ?v=2 = textura optimizada (1024px). Cambia el número si actualizas el modelo.
+const MODELO_URL = '/images/Astronauta%20v1.glb?v=2';
 
 // Frases que "piensa" el astronauta (aparecen solas y al tocarlo)
 const PENSAMIENTOS = [
