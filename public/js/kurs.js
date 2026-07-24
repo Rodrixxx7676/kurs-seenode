@@ -218,18 +218,6 @@
       return 'https://wa.me/' + WSP + '?text=' + encodeURIComponent(texto);
     };
 
-    // KOSMO usa la imagen del personaje completo, encuadrada en la carita por
-    // CSS. Si la imagen faltara, se mantiene el ícono de respaldo.
-    function montarKosmo(cont) {
-      if (!cont) return;
-      const img = document.createElement('img');
-      img.className = 'kbot-kosmo-img';
-      img.alt = 'KOSMO';
-      img.addEventListener('load', function () { cont.classList.add('kbot-con-img'); });
-      img.src = '/images/kosmo-completo.png?v=2';
-      cont.insertBefore(img, cont.firstChild);
-    }
-
     const lanzador = document.createElement('button');
     lanzador.className = 'kbot-lanzador';
     lanzador.setAttribute('aria-label', 'Abrir a KOSMO, tu amigo virtual');
@@ -263,8 +251,6 @@
 
     document.body.appendChild(lanzador);
     document.body.appendChild(win);
-    montarKosmo(lanzador);
-    montarKosmo(win.querySelector('.kbot-avatar'));
 
     const msgs = win.querySelector('#kbotMsgs');
     const chipsBox = win.querySelector('#kbotChips');
