@@ -24,7 +24,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.22.0/dist/tabler-icons.min.css" />
-  <link rel="stylesheet" href="/css/app.css?v=30" />
+  <link rel="stylesheet" href="/css/app.css?v=31" />
   <link rel="icon" type="image/svg+xml" href="/images/LogoSinFondo.svg" />
   <link rel="manifest" href="/site.webmanifest" />
   <link rel="apple-touch-icon" href="/icon-192.png" />
@@ -143,8 +143,14 @@
     <div class="hero-visual">
       <div class="hero-logo-ring ring-outer"></div>
       <div class="hero-logo-ring ring-mid"></div>
-      <div class="hero-logo-wrap">
-        <img src="/images/LogoSinFondo.svg" alt="KURS" class="hero-logo-img" decoding="async" />
+      <div id="astronauta-3d" class="astronauta-3d" role="img"
+           aria-label="Astronauta 3D de KURS. Arrástralo para girarlo o tócalo para que te cuente algo.">
+        <!-- Respaldo: se muestra hasta que el modelo 3D cargue, o si WebGL no está disponible -->
+        <div class="astronauta-fallback">
+          <div class="hero-logo-wrap">
+            <img src="/images/LogoSinFondo.svg" alt="KURS" class="hero-logo-img" decoding="async" />
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -487,6 +493,7 @@
     <p class="footer-copy">© <span class="footer-year"></span> KURS. Todos los derechos reservados. · <a href="/privacidad" class="footer-legal-link">Política de Privacidad</a> · <span class="footer-version">v1</span></p>
   </footer>
 
-  <script src="/js/kurs.js?v=30"></script>
+  <script src="/js/kurs.js?v=31"></script>
+  <script type="module" src="/js/astronauta.js?v=31"></script>
 </body>
 </html>
