@@ -827,6 +827,109 @@ h1, h2, h3,
   letter-spacing: 0.06em; color: rgba(255,255,255,0.5);
 }
 
+/* ═══════════ TRABAJOS / PORTAFOLIO ═══════════ */
+.trabajos {
+  position: relative; z-index: 1;
+  padding: 80px 80px 100px;
+  max-width: 1200px; margin: 0 auto;
+}
+.trabajos-intro {
+  font-family: var(--font-body); font-size: 15px; font-weight: 300;
+  line-height: 1.7; color: rgba(255,255,255,0.7);
+  max-width: 60ch; margin: 16px auto 0;
+}
+
+/* auto-fit: 3 columnas en escritorio, 2 en tablet y 1 en movil sin saltos */
+.trabajos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+  gap: 20px;
+}
+
+.trabajo-card {
+  position: relative; overflow: hidden;
+  border-radius: var(--radius-xl);
+  display: flex; flex-direction: column;
+  transition: transform 0.35s ease, box-shadow 0.35s ease, background 0.2s ease;
+}
+.trabajo-card:hover {
+  transform: translateY(-6px);
+  background: rgba(255,255,255,0.09);
+  box-shadow:
+    0 0 0 0.5px rgba(255,255,255,0.12) inset,
+    0 24px 64px rgba(0,0,0,0.65),
+    0 1px 0 rgba(255,255,255,0.15) inset;
+}
+
+/* La proporcion fija reserva el hueco: la rejilla no salta al cargar la imagen */
+.trabajo-media {
+  position: relative; overflow: hidden;
+  aspect-ratio: 4 / 3;
+  background: rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--glass-border);
+}
+.trabajo-media img {
+  width: 100%; height: 100%;
+  object-fit: cover; display: block;
+  transition: transform 0.5s ease;
+}
+/* El zoom vive dentro del marco recortado: no empuja nada de alrededor */
+.trabajo-card:hover .trabajo-media img { transform: scale(1.05); }
+
+.trabajo-info {
+  display: flex; flex-direction: column; align-items: flex-start;
+  gap: 10px; padding: 24px 26px 26px;
+}
+.trabajo-tipo {
+  display: inline-block;
+  padding: 4px 12px; border-radius: 999px;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid var(--glass-border);
+  font-family: var(--font-display);
+  font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: rgba(255,255,255,0.75);
+}
+.trabajo-info h3 {
+  font-family: var(--font-display);
+  font-size: 17px; font-weight: 700; letter-spacing: 0.02em;
+  color: var(--white);
+}
+.trabajo-info p {
+  font-family: var(--font-body); font-size: 14px; font-weight: 300;
+  line-height: 1.65; color: rgba(255,255,255,0.72);
+}
+/* min-height 44px: objetivo tactil comodo aunque el texto sea corto */
+.trabajo-link {
+  display: inline-flex; align-items: center; gap: 7px;
+  min-height: 44px; margin-top: 2px;
+  font-family: var(--font-body); font-size: 13px; font-weight: 500;
+  color: rgba(255,255,255,0.8); text-decoration: none;
+  transition: color 0.2s ease, gap 0.2s ease;
+}
+.trabajo-link:hover { color: var(--white); gap: 11px; }
+.trabajo-link:focus-visible {
+  outline: 2px solid rgba(255,255,255,0.7);
+  outline-offset: 3px; border-radius: 6px;
+}
+.trabajo-link i { font-size: 15px; }
+
+.trabajos-cta {
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  margin-top: 52px; text-align: center;
+}
+.trabajos-cta p {
+  font-family: var(--font-body); font-size: 15px; font-weight: 300;
+  color: rgba(255,255,255,0.7);
+}
+
+@media (max-width: 900px) {
+  .trabajos { padding: 60px 24px 72px; }
+}
+@media (max-width: 600px) {
+  .trabajos { padding: 48px 18px 60px; }
+  .trabajos-grid { gap: 16px; }
+}
+
 /* ===== PROMISE SECTION ===== */
 .promise-section {
   position: relative; z-index: 2;
@@ -2030,6 +2133,8 @@ body.con-promo .navbar { top: calc(var(--promo-h, 46px) + 12px); }
 @media (prefers-reduced-motion: reduce) {
   .promo-bar::before, .kbot-lanzador, .wsp-flotante { animation: none; }
   .service-card, .plan-card, .paso-card { animation: none !important; }
+  .trabajo-card, .trabajo-card:hover { transform: none; }
+  .trabajo-card:hover .trabajo-media img { transform: none; }
   html { scroll-behavior: auto; }
 }
 
